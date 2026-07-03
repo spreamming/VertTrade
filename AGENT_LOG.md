@@ -95,3 +95,5 @@ Dependencies have not yet been installed, and runtime tests have not yet been ru
 - Created this root-level `AGENT_LOG.md` as the shared agent memory and project activity log.
 - Fixed the `agent log created` commit author after it was pushed with the auto-detected local identity.
 - Set repo-local Git identity so future commits in this repository default to `spreamming <fredspream@gmail.com>`.
+- Started Stage 0 foundation build: backend health now checks SQLite readiness, frontend displays API/database readiness, planned backend/frontend module directories were created, and README startup instructions were added.
+- Completed Stage 0 verification: installed backend/frontend dependencies, backend tests pass, frontend typecheck passes, frontend production build passes, and `GET /api/health` returned API/database `ok`.

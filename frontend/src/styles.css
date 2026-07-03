@@ -55,3 +55,38 @@ p {
   border-radius: 16px;
   background: #1f2937;
 }
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+  margin: 0;
+}
+
+.status-grid div {
+  padding: 16px;
+  border-radius: 12px;
+  background: #111827;
+}
+
+.status-grid dt {
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.status-grid dd {
+  margin: 8px 0 0;
+  color: #f8fafc;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.stage-list {
+  margin: 0;
+  padding-left: 20px;
+  color: #cbd5e1;
+  font-size: 18px;
+  line-height: 1.7;
+}

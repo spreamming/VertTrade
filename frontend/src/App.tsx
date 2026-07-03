@@ -27,15 +27,35 @@ function App() {
       </section>
 
       <section className="status-card">
-        <h2>Backend Status</h2>
+        <h2>Stage 0 Readiness</h2>
         {health ? (
-          <p>
-            {health.app} API is <strong>{health.status}</strong> in{" "}
-            {health.environment} mode.
-          </p>
+          <dl className="status-grid">
+            <div>
+              <dt>API</dt>
+              <dd>{health.status}</dd>
+            </div>
+            <div>
+              <dt>SQLite</dt>
+              <dd>{health.database}</dd>
+            </div>
+            <div>
+              <dt>Environment</dt>
+              <dd>{health.environment}</dd>
+            </div>
+          </dl>
         ) : (
           <p>{error ?? "Checking backend..."}</p>
         )}
+      </section>
+
+      <section className="status-card">
+        <h2>Foundation Scope</h2>
+        <ul className="stage-list">
+          <li>FastAPI backend with CORS enabled for local Vite.</li>
+          <li>React + TypeScript frontend connected to the health endpoint.</li>
+          <li>SQLite database file initialized under local project data.</li>
+          <li>Next: fetch and cache the first daily K-line dataset.</li>
+        </ul>
       </section>
     </main>
   );

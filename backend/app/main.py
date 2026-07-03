@@ -1,12 +1,23 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.exc import SQLAlchemyError
 
-from app.config import get_settings
+from .config import get_settings
+from .database import check_database_connection, initialize_database
 
 
 settings = get_settings()
 
-app = FastAPI(title=settings.app_name)
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    initialize_database()
+    yield
+
+
+app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -22,8 +33,14 @@ app.add_middleware(
 
 @app.get("/api/health")
 def health_check():
+    try:
+        database_status = "ok" if check_database_connection() else "error"
+    except SQLAlchemyError:
+        database_status = "error"
+
     return {
         "status": "ok",
         "app": settings.app_name,
         "environment": settings.app_env,
+        "database": database_status,
     }

@@ -54,6 +54,44 @@ This repository is at the project foundation stage. The first implementation tar
 4. Fetch and store daily K-line data for one stock.
 5. Render the first K-line and volume chart.
 
+## Stage 0 Local Setup
+
+Create and activate a Python virtual environment, then install backend dependencies:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Start the backend from the repository root:
+
+```bash
+uvicorn backend.app.main:app --reload
+```
+
+The backend health endpoint is available at:
+
+```text
+http://127.0.0.1:8000/api/health
+```
+
+Install and start the frontend:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend reads `VITE_API_BASE_URL` when provided and otherwise uses `http://127.0.0.1:8000`.
+
+Stage 0 is complete when:
+
+- The backend starts and `/api/health` returns API and SQLite status.
+- The frontend starts and displays the Stage 0 readiness card.
+- The local SQLite database can be initialized under `data/market_watch.db`.
+
 ## Development Notes
 
 Use a local SQLite database for MVP development. Keep external data-source adapters isolated from business logic so provider changes do not leak into the frontend or indicator calculations.

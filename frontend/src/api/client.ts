@@ -5,6 +5,7 @@ export type HealthResponse = {
   status: string;
   app: string;
   environment: string;
+  database: string;
 };
 
 export async function getHealth(): Promise<HealthResponse> {
