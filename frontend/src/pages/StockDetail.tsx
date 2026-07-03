@@ -2,13 +2,16 @@ import { useCallback, useEffect, useState } from "react";
 
 import {
   getStockKline,
+  getStockMoneyflow,
   getStockPosition,
   type KlineResponse,
+  type MoneyflowResponse,
   type StockPosition,
   type StockQuote,
   type StockSummary,
 } from "../api/client";
 import { KLineChart } from "../components/KLineChart";
+import { MoneyFlowPanel } from "../components/MoneyFlowPanel";
 import { PositionCard } from "../components/PositionCard";
 import { buildQuoteFromKline } from "../utils/quote";
 
@@ -31,17 +34,25 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
   const [quote, setQuote] = useState<StockQuote | null>(null);
   const [kline, setKline] = useState<KlineResponse | null>(null);
   const [position, setPosition] = useState<StockPosition | null>(null);
+  const [moneyflow, setMoneyflow] = useState<MoneyflowResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [moneyflowLoading, setMoneyflowLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [moneyflowError, setMoneyflowError] = useState<string | null>(null);
 
   const loadData = useCallback(
     async (refresh = false) => {
       setLoading(true);
       setError(null);
+      setMoneyflowLoading(true);
+      setMoneyflowError(null);
+      setMoneyflow(null);
 
       try {
-        const klineData = await getStockKline(stock.code, refresh);
-        const positionData = await getStockPosition(stock.code, 250, refresh);
+        const [klineData, positionData] = await Promise.all([
+          getStockKline(stock.code, refresh),
+          getStockPosition(stock.code, 250, refresh),
+        ]);
         const quoteData = buildQuoteFromKline(stock, klineData.bars);
 
         if (!quoteData) {
@@ -55,6 +66,17 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
         setError(err instanceof Error ? err.message : "加载个股数据失败");
       } finally {
         setLoading(false);
+      }
+
+      try {
+        const moneyflowData = await getStockMoneyflow(stock.code, refresh);
+        setMoneyflow(moneyflowData);
+      } catch (err: unknown) {
+        setMoneyflowError(
+          err instanceof Error ? err.message : "加载主力资金流失败",
+        );
+      } finally {
+        setMoneyflowLoading(false);
       }
     },
     [stock.code],
@@ -87,7 +109,7 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
           type="button"
           className="refresh-button"
           onClick={() => void loadData(true)}
-          disabled={loading}
+          disabled={loading || moneyflowLoading}
         >
           刷新
         </button>
@@ -131,10 +153,16 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
 
       {kline && kline.bars.length > 0 ? (
         <section className="chart-panel">
-          <h2>日 K 线</h2>
-          <KLineChart bars={kline.bars} />
+          <h2>日 K 线 / 成交量 / 主力资金流</h2>
+          <KLineChart bars={kline.bars} moneyflowBars={moneyflow?.bars ?? []} />
         </section>
       ) : null}
+
+      <MoneyFlowPanel
+        moneyflow={moneyflow}
+        loading={moneyflowLoading}
+        error={moneyflowError}
+      />
     </div>
   );
 }

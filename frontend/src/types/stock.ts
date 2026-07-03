@@ -53,6 +53,23 @@ export type StockPosition = {
   label: string;
 };
 
+export type MoneyflowBar = {
+  date: string;
+  main_net_inflow: number;
+  main_net_ratio?: number | null;
+  super_large_net_inflow?: number | null;
+  large_net_inflow?: number | null;
+  medium_net_inflow?: number | null;
+  small_net_inflow?: number | null;
+};
+
+export type MoneyflowResponse = {
+  code: string;
+  name: string;
+  source: string;
+  bars: MoneyflowBar[];
+};
+
 export type WatchlistItem = {
   id: number;
   code: string;
@@ -70,6 +87,10 @@ export type WatchlistItem = {
   position_label?: string | null;
   position_window?: number | null;
   position_error?: string | null;
+  main_net_inflow?: number | null;
+  main_net_ratio?: number | null;
+  moneyflow_date?: string | null;
+  moneyflow_error?: string | null;
   created_at: string;
 };
 

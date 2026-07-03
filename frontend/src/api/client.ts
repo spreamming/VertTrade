@@ -1,6 +1,7 @@
 import type {
   DashboardResponse,
   KlineResponse,
+  MoneyflowResponse,
   StockPosition,
   StockQuote,
   StockSummary,
@@ -19,6 +20,7 @@ export type HealthResponse = {
 export type {
   DashboardResponse,
   KlineResponse,
+  MoneyflowResponse,
   StockPosition,
   StockQuote,
   StockSummary,
@@ -117,6 +119,20 @@ export async function getStockPosition(
     params.set("refresh", "true");
   }
   return request<StockPosition>(`/api/stocks/${code}/position?${params.toString()}`);
+}
+
+export async function getStockMoneyflow(
+  code: string,
+  refresh = false,
+): Promise<MoneyflowResponse> {
+  const params = new URLSearchParams();
+  if (refresh) {
+    params.set("refresh", "true");
+  }
+  const query = params.toString();
+  return request<MoneyflowResponse>(
+    `/api/stocks/${code}/moneyflow${query ? `?${query}` : ""}`,
+  );
 }
 
 export async function getDashboard(): Promise<DashboardResponse> {

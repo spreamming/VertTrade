@@ -46,7 +46,7 @@ VertTrade/
 
 ## Current Stage
 
-Stage 0, Phase 1, and Phase 2 are complete. Phase 3 (price-position / top-bottom zone MVP) is now implemented.
+Stage 0, Phase 1, Phase 2, and Phase 3 are complete. Phase 4 (individual stock main money-flow MVP) is now implemented.
 
 You can:
 
@@ -59,10 +59,12 @@ You can:
 7. Open stock detail pages directly from the watchlist.
 8. View a 0-100 price-position score and top/bottom zone label on stock detail pages.
 9. See the current price-position label in the watchlist table.
+10. View daily main money inflow/outflow bars and summary on stock detail pages.
+11. See latest main net inflow and ratio in the watchlist table.
 
 Next target:
 
-1. Main money-flow MVP.
+1. Sector money-flow and ranking pages.
 2. Major index and market overview data for the Dashboard.
 3. Broader price-position support for indices and additional windows in the UI.
 

@@ -12,21 +12,54 @@ import {
 } from "lightweight-charts";
 import { useEffect, useRef } from "react";
 
-import type { KlineBar } from "../types/stock";
+import type { KlineBar, MoneyflowBar } from "../types/stock";
 
 type KLineChartProps = {
   bars: KlineBar[];
+  moneyflowBars?: MoneyflowBar[];
 };
 
 function toChartTime(date: string): Time {
   return date as Time;
 }
 
-export function KLineChart({ bars }: KLineChartProps) {
+function formatChineseChartDate(time: Time): string {
+  if (typeof time === "string") {
+    const [year, month, day] = time.split("-");
+    if (year && month && day) {
+      return `${Number(year)}年${Number(month)}月${Number(day)}日`;
+    }
+    return time;
+  }
+
+  if (typeof time === "number") {
+    const date = new Date(time * 1000);
+    return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+  }
+
+  return `${time.year}年${time.month}月${time.day}日`;
+}
+
+function formatChineseTickDate(time: Time): string {
+  if (typeof time === "string") {
+    const [year, month, day] = time.split("-");
+    if (year && month && day) {
+      const currentYear = new Date().getFullYear();
+      const numericYear = Number(year);
+      const suffix = `${Number(month)}月${Number(day)}日`;
+      return numericYear === currentYear ? suffix : `${numericYear}年${suffix}`;
+    }
+  }
+
+  return formatChineseChartDate(time);
+}
+
+export function KLineChart({ bars, moneyflowBars = [] }: KLineChartProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const volumeRef = useRef<ISeriesApi<"Histogram"> | null>(null);
+  const moneyflowRef = useRef<ISeriesApi<"Histogram"> | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) {
@@ -44,6 +77,9 @@ export function KLineChart({ bars }: KLineChartProps) {
         horzLines: { color: "#1f2937" },
       },
       crosshair: { mode: CrosshairMode.Normal },
+      localization: {
+        timeFormatter: formatChineseChartDate,
+      },
       rightPriceScale: {
         borderColor: "#334155",
       },
@@ -51,6 +87,7 @@ export function KLineChart({ bars }: KLineChartProps) {
         borderColor: "#334155",
         timeVisible: true,
         secondsVisible: false,
+        tickMarkFormatter: formatChineseTickDate,
       },
     });
 
@@ -68,24 +105,56 @@ export function KLineChart({ bars }: KLineChartProps) {
       priceScaleId: "volume",
     });
 
+    const moneyflowSeries = chart.addSeries(HistogramSeries, {
+      priceFormat: {
+        type: "custom",
+        formatter: (value: number) => {
+          const abs = Math.abs(value);
+          if (abs >= 100_000_000) {
+            return `${(value / 100_000_000).toFixed(1)}亿`;
+          }
+          if (abs >= 10_000) {
+            return `${(value / 10_000).toFixed(0)}万`;
+          }
+          return value.toFixed(0);
+        },
+      },
+      priceScaleId: "moneyflow",
+    });
+
+    chart.priceScale("right").applyOptions({
+      scaleMargins: { top: 0.05, bottom: 0.42 },
+    });
+
     chart.priceScale("volume").applyOptions({
-      scaleMargins: { top: 0.8, bottom: 0 },
+      scaleMargins: { top: 0.64, bottom: 0.2 },
+    });
+
+    chart.priceScale("moneyflow").applyOptions({
+      scaleMargins: { top: 0.82, bottom: 0 },
     });
 
     chartRef.current = chart;
     candleRef.current = candleSeries;
     volumeRef.current = volumeSeries;
+    moneyflowRef.current = moneyflowSeries;
 
     return () => {
       chart.remove();
       chartRef.current = null;
       candleRef.current = null;
       volumeRef.current = null;
+      moneyflowRef.current = null;
     };
   }, []);
 
   useEffect(() => {
-    if (!candleRef.current || !volumeRef.current || bars.length === 0) {
+    if (
+      !candleRef.current ||
+      !volumeRef.current ||
+      !moneyflowRef.current ||
+      bars.length === 0
+    ) {
       return;
     }
 
@@ -107,10 +176,29 @@ export function KLineChart({ bars }: KLineChartProps) {
       };
     });
 
+    const moneyflowByDate = new Map(
+      moneyflowBars.map((bar) => [bar.date, bar.main_net_inflow]),
+    );
+    const moneyflowData: HistogramData<Time>[] = [];
+    for (const bar of bars) {
+      const value = moneyflowByDate.get(bar.date);
+      if (value !== undefined) {
+        moneyflowData.push({
+          time: toChartTime(bar.date),
+          value,
+          color:
+            value >= 0
+              ? "rgba(239, 68, 68, 0.75)"
+              : "rgba(34, 197, 94, 0.75)",
+        });
+      }
+    }
+
     candleRef.current.setData(candleData);
     volumeRef.current.setData(volumeData);
+    moneyflowRef.current.setData(moneyflowData);
     chartRef.current?.timeScale().fitContent();
-  }, [bars]);
+  }, [bars, moneyflowBars]);
 
   return <div ref={containerRef} className="kline-chart" />;
 }

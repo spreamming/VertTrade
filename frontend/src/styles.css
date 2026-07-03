@@ -340,7 +340,55 @@ p {
 
 .kline-chart {
   width: 100%;
-  height: 520px;
+  height: 680px;
+}
+
+.moneyflow-panel {
+  max-width: 1100px;
+  margin-bottom: 24px;
+  padding: 20px;
+  border: 1px solid #334155;
+  border-radius: 16px;
+  background: #1f2937;
+}
+
+.moneyflow-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.moneyflow-grid div {
+  padding: 12px;
+  border-radius: 12px;
+  background: #111827;
+}
+
+.moneyflow-grid dt {
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.moneyflow-grid dd {
+  margin: 6px 0 0;
+  color: #f8fafc;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.flow-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.flow-neutral {
+  color: #cbd5e1;
 }
 
 .dashboard-shell {

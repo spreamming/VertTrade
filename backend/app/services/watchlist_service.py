@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from ..models import WatchlistItem
 from ..repositories.stock_repo import StockRepository
 from ..repositories.watchlist_repo import WatchlistRepository
-from ..schemas.stock import StockPosition, StockQuote
+from ..schemas.stock import MoneyflowBar, StockPosition, StockQuote
 from ..schemas.watchlist import DashboardResponse, WatchlistCreate, WatchlistItemResponse
 from .stock_service import StockService
 
@@ -54,6 +54,8 @@ class WatchlistService:
         quote_error: str | None = None
         position: StockPosition | None = None
         position_error: str | None = None
+        latest_moneyflow: MoneyflowBar | None = None
+        moneyflow_error: str | None = None
 
         try:
             quote, position = self.stock_service.get_quote_and_position(item.code)
@@ -61,6 +63,11 @@ class WatchlistService:
             detail = str(exc.detail)
             quote_error = detail
             position_error = detail
+
+        try:
+            latest_moneyflow = self.stock_service.get_latest_moneyflow(item.code)
+        except HTTPException as exc:
+            moneyflow_error = str(exc.detail)
 
         return WatchlistItemResponse(
             id=item.id,
@@ -79,5 +86,11 @@ class WatchlistService:
             position_label=position.label if position else None,
             position_window=position.window if position else None,
             position_error=position_error,
+            main_net_inflow=latest_moneyflow.main_net_inflow if latest_moneyflow else None,
+            main_net_ratio=latest_moneyflow.main_net_ratio if latest_moneyflow else None,
+            moneyflow_date=(
+                latest_moneyflow.date.isoformat() if latest_moneyflow else None
+            ),
+            moneyflow_error=moneyflow_error,
             created_at=item.created_at,
         )

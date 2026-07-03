@@ -26,6 +26,10 @@ class WatchlistItemResponse(BaseModel):
     position_label: str | None = None
     position_window: int | None = None
     position_error: str | None = None
+    main_net_inflow: float | None = None
+    main_net_ratio: float | None = None
+    moneyflow_date: str | None = None
+    moneyflow_error: str | None = None
     created_at: datetime
 
 

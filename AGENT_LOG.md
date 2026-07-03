@@ -55,7 +55,7 @@ Older pushed commits before `dd0b997` may still contain Cursor co-author trailer
 - GitHub repo: `https://github.com/spreamming/VertTrade.git`
 - Local branch: `main`
 - Remote: `origin`
-- Latest pushed commit on `main`: `dd0b997 stage 2`
+- Latest pushed commit on `main`: `d9a3c3d stage 3`
 - Correct Git identity for commits: `spreamming <fredspream@gmail.com>`
 - Repo-local Git identity is configured in `.git/config` so future commits in this repo use the correct author.
 
@@ -80,7 +80,7 @@ Initial scaffold already created:
 
 Dependencies have been installed locally.
 
-Stage 0, Phase 1, and Phase 2 watchlist/Dashboard MVP are complete and pushed. Phase 3 price-position / top-bottom zone MVP is implemented and verified locally, but has not been committed or pushed.
+Stage 0, Phase 1, Phase 2, and Phase 3 are complete and pushed. Phase 4 individual stock main money-flow MVP is implemented locally, not yet committed or pushed.
 
 Current verification commands have passed:
 
@@ -135,3 +135,9 @@ Current verification commands have passed:
 - Highlighted permanent Git policy in `AGENT_LOG.md`, `.cursor/rules/Git-Rules.mdc`, and `market_watch_development_plan.md`: only `spreamming <fredspream@gmail.com>` may appear as contributor; never add Cursor co-author trailers on new commits.
 - Implemented Phase 3 MVP: backend price-position indicator based on rolling high/low range, `/api/stocks/{code}/position`, 250/750/1250-day backend windows, Chinese top/bottom zone labels, stock detail position card, and watchlist position labels. Verified backend tests, frontend typecheck, and frontend build.
 - Applied `suggestion.md` Phase 3 follow-ups: tightened K-line cache end-date freshness (4-day calendar tolerance for weekends/holidays), refactored quote + position to reuse one K-line lookup via `get_quote_and_position`, and added direct `position_score` boundary unit tests (24 backend tests pass).
+- Committed and pushed `d9a3c3d stage 3` without any `Co-authored-by` trailer (recreated via `commit-tree` after Cursor injected co-author on first attempt).
+- Implemented Phase 4 MVP: AKShare individual stock main money-flow collector, SQLite `moneyflow_daily` cache, `/api/stocks/{code}/moneyflow`, stock detail money-flow summary + bar chart, and watchlist main net inflow columns. Verified 26 backend tests, frontend typecheck, and frontend build.
+- Added `.cursor/rules/stage-frontend-changelog.mdc`: after each completed stage, agent must explain new frontend UI/features vs the previous stage in Simplified Chinese.
+- Adjusted Phase 4 frontend chart layout: main money-flow bars now render inside the K-line chart under volume on the same time axis; the standalone money-flow chart panel was removed. Frontend typecheck/build pass.
+- Applied Phase 4 checker suggestions: stock detail now loads core quote/K-line/position separately from optional money-flow, so money-flow failures show a local warning instead of blocking the page; money-flow collector validates required AKShare columns; proxy bypass was strengthened for requests; backend tests now 27 pass and frontend typecheck/build pass. Live money-flow check: `000001` SZ succeeds, `600519` SH still returns an upstream connection close handled by the API.
+- Localized K-line chart date labels: the bottom time axis and crosshair date formatter now display Chinese date text. Frontend typecheck/build pass.

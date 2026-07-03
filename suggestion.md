@@ -2,110 +2,125 @@
 
 This file summarizes the latest checker process and gives focused suggestions for the next builder agent. It should be overwritten after every future checker run.
 
-**Last checker run:** 2026-07-03 (fourth run)  
-**Scope checked:** Phase 3 price-position / top-bottom zone MVP  
+**Last checker run:** 2026-07-03 (fifth run)  
+**Scope checked:** Phase 4 individual stock main money-flow MVP  
 **Source report:** `CHECKER_LOG.md`
 
 ---
 
 ## Checker Summary
 
-The checker verified the Phase 3 price-position MVP.
+The checker verified the Phase 4 money-flow MVP.
 
-Result: **PASS**.
+Result: **PASS with one important risk**.
 
 Verified behavior:
 
-- Backend tests pass: 10/10.
+- Backend tests pass: 26/26.
 - Frontend typecheck passes.
 - Frontend production build passes.
-- Live `/api/stocks/600519/position?window=250` returns 200 OK.
-- Stock detail page displays a Chinese price-position card.
-- Watchlist table displays price-position label and score.
-- The UI correctly avoids buy/sell signal language.
+- Money-flow backend model, repository, collector, cache, and API are present.
+- Watchlist summary includes latest main net inflow and main net ratio.
+- Stock detail includes money-flow summary.
+- K-line chart now includes main money-flow bars under volume on the same time axis.
+- UI text explains the data source口径 and avoids trading-signal language.
 - No trading, brokerage, account, order, or credential functionality was introduced.
+
+Live data-source check:
+
+- `/api/stocks/600519/moneyflow` returned a handled `503` response.
+- This means the app did not crash, but live AKShare/Eastmoney money-flow data was unavailable during the check.
 
 ---
 
 ## Builder Fix Suggestions
 
-### 1. Tighten K-line cache freshness
+### 1. Make money-flow failure non-blocking on stock detail
 
-`StockService.get_kline()` should verify that cached K-line data reaches the requested `end_date`.
+Current risk:
 
-Current behavior mostly checks whether cache exists and whether the cached start date covers the requested start date. This can allow stale cached data to be reused for quote and position calculations.
-
-Suggested fix:
-
-- After reading cached bars, compare the latest cached `trade_date` with the requested `end_date`.
-- If cached data is older than the latest expected trade date, fetch again or use a controlled refresh policy.
-- Be careful with weekends and holidays; do not assume every calendar day is a trading day.
-
-### 2. Reduce repeated K-line loading
-
-The current flow is functionally correct, but may do repeated work:
-
-- `StockDetail` loads K-line data, then separately loads price-position data.
-- `WatchlistService` gets quote data and position data separately for each watchlist item.
+- `StockDetail` loads K-line, position, and money-flow in one flow.
+- If money-flow returns `503`, the page-level catch path prevents available quote/K-line/position data from being set.
+- A temporary money-flow failure can therefore make the whole stock detail page look broken.
 
 Suggested fix:
 
-- Reuse the same K-line series to derive quote and price position where possible.
-- Consider a service-level helper that returns quote + position from one K-line lookup.
-- For watchlist summaries, consider batching or caching per request to avoid repeated data-source calls.
+- Load core stock detail data first: K-line, quote, and price position.
+- Load money-flow separately.
+- If money-flow fails, keep K-line and position visible and show a local money-flow warning near the money-flow panel.
+- Do not use one page-level error for optional money-flow data.
 
-### 3. Add direct indicator boundary tests
+### 2. Verify the live AKShare money-flow source
 
-Current tests cover the position endpoint and invalid window rejection. Add unit tests for `calculate_position_score()` / `classify_position_zone()`.
+The tests use mocked money-flow data and pass. The live source returned `503`.
 
-Recommended cases:
+Suggested checks:
 
-- `0-10`: 深度底部区
-- `10-20`: 底部观察区
-- `20-80`: 中性区
-- `80-90`: 高位观察区
-- `90-100`: 顶部风险区
-- Flat high/low range should return neutral `50.0`.
-- Scores should be clamped to `0-100`.
+- Confirm `ak.stock_individual_fund_flow(stock=code, market=market)` still works with current AKShare.
+- Confirm `market` should be `sh` / `sz` for the target endpoint.
+- Log or inspect missing/changed upstream fields during local debugging.
+- Keep the user-facing backend error in Chinese and non-technical.
 
-### 4. Keep Phase 3 wording conservative
+### 3. Add defensive collector validation
 
-Continue using wording like:
+`moneyflow_collector.py` assumes specific Chinese AKShare column names.
 
-- 价格位置
-- 风险区域
-- 底部观察区
-- 高位观察区
+Suggested fix:
 
-Avoid wording like:
+- Define a required-column list before renaming.
+- If required columns are absent, raise a clear data-source error.
+- Include enough internal detail for debugging, but do not expose noisy raw provider errors directly to the frontend.
+
+### 4. Keep money-flow cache behavior explicit
+
+The cache refresh behavior is currently basic.
+
+Suggested fix:
+
+- Decide whether money-flow should refresh once per day, on manual refresh, or whenever cached data is stale by date.
+- Be careful with weekends and market holidays.
+- Keep cached data visible if a refresh fails.
+
+### 5. Preserve the current chart direction
+
+The current UI direction is good:
+
+- K-line, volume, and main money-flow bars share one time axis.
+- Money-flow summary stays as a separate explanation/summary panel.
+
+Keep this layout unless the user asks for a separate money-flow chart again.
+
+### 6. Keep wording conservative
+
+Continue using:
+
+- 主力资金流
+- 主力净流入
+- 主力净占比
+- 数据来源 / 数据口径
+- 观察维度
+
+Avoid:
 
 - 买入
 - 卖出
+- 交易信号
 - 建仓
 - 清仓
-- 交易信号
+- 主力真实动向
 
-This keeps the feature aligned with the project boundary: personal market analysis only, not trading advice or automation.
-
-### 5. Dashboard market overview remains later work
-
-The checker confirms this is still acceptable:
-
-- Major indices are not implemented yet.
-- Market breadth is not implemented yet.
-- Turnover / broader market overview is not implemented yet.
-
-Keep these as later Dashboard expansion tasks unless the user explicitly asks to prioritize them.
+Money-flow should remain an observation feature, not a trading instruction.
 
 ---
 
 ## Suggested Next Build Direction
 
-Best next technical step: stabilize the price-position data path before adding more indicators.
+Best next technical step: improve money-flow resilience before expanding to sector/ranking features.
 
 Recommended order:
 
-1. Improve K-line cache freshness.
-2. Refactor quote + position calculations to reuse K-line data.
-3. Add direct unit tests for position score boundaries.
-4. Then continue toward either Dashboard market overview or Phase 4 money-flow MVP.
+1. Decouple money-flow loading from stock detail core data.
+2. Add collector column validation and clearer data-source error handling.
+3. Confirm live AKShare money-flow behavior with at least one Shanghai and one Shenzhen stock.
+4. Add tests for money-flow failure fallback on stock detail/watchlist behavior where practical.
+5. Then continue toward sector money-flow or money-flow rankings.

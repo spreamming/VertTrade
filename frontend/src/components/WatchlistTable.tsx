@@ -1,4 +1,5 @@
 import type { StockSummary, WatchlistItem } from "../api/client";
+import { formatMoneyAmount } from "../utils/money";
 
 type WatchlistTableProps = {
   items: WatchlistItem[];
@@ -48,6 +49,7 @@ export function WatchlistTable({
             <th>最新价</th>
             <th>涨跌幅</th>
             <th>价格位置</th>
+            <th>主力净流入</th>
             <th>交易日期</th>
             <th>操作</th>
           </tr>
@@ -100,7 +102,28 @@ export function WatchlistTable({
                     <p className="table-note">{item.position_error}</p>
                   ) : null}
                 </td>
-                <td>{item.trade_date ?? "--"}</td>
+                <td className={
+                  item.main_net_inflow !== null &&
+                  item.main_net_inflow !== undefined &&
+                  item.main_net_inflow >= 0
+                    ? "quote-up"
+                    : item.main_net_inflow !== null && item.main_net_inflow !== undefined
+                      ? "quote-down"
+                      : undefined
+                }>
+                  {item.main_net_inflow !== null && item.main_net_inflow !== undefined ? (
+                    <span>{formatMoneyAmount(item.main_net_inflow)}</span>
+                  ) : (
+                    "--"
+                  )}
+                  {item.main_net_ratio !== null && item.main_net_ratio !== undefined ? (
+                    <p className="table-note">占比 {formatPercent(item.main_net_ratio)}</p>
+                  ) : null}
+                  {item.moneyflow_error ? (
+                    <p className="table-note">{item.moneyflow_error}</p>
+                  ) : null}
+                </td>
+                <td>{item.trade_date ?? item.moneyflow_date ?? "--"}</td>
                 <td>
                   <button
                     type="button"

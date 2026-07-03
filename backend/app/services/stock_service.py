@@ -6,11 +6,24 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from ..collectors.kline_collector import fetch_daily_kline
+from ..collectors.moneyflow_collector import (
+    MoneyflowDataSourceError,
+    fetch_stock_moneyflow,
+)
 from ..collectors.stock_basic_collector import fetch_stock_list
 from ..indicators.position_score import calculate_position_score
 from ..repositories.kline_repo import KlineRepository
+from ..repositories.moneyflow_repo import MoneyflowRepository
 from ..repositories.stock_repo import StockRepository
-from ..schemas.stock import KlineBar, KlineResponse, StockPosition, StockQuote, StockSummary
+from ..schemas.stock import (
+    KlineBar,
+    KlineResponse,
+    MoneyflowBar,
+    MoneyflowResponse,
+    StockPosition,
+    StockQuote,
+    StockSummary,
+)
 
 
 class StockService:
@@ -21,6 +34,7 @@ class StockService:
         self.db = db
         self.stock_repo = StockRepository(db)
         self.kline_repo = KlineRepository(db)
+        self.moneyflow_repo = MoneyflowRepository(db)
 
     @staticmethod
     def _position_lookback_days(window: int) -> int:
@@ -218,3 +232,79 @@ class StockService:
         quote = self._build_quote_from_kline(kline, code)
         position = self._build_position_from_kline(kline, code, window)
         return quote, position
+
+    def get_moneyflow(
+        self,
+        code: str,
+        start: date | None = None,
+        end: date | None = None,
+        refresh: bool = False,
+    ) -> MoneyflowResponse:
+        self.ensure_stock_catalog()
+        stock = self.stock_repo.get_by_code(code)
+        if stock is None:
+            raise HTTPException(status_code=404, detail=f"未找到股票 {code}")
+
+        end_date = end or date.today()
+        start_date = start or (end_date - timedelta(days=365))
+
+        cached = self.moneyflow_repo.get_range(code, start_date, end_date)
+        latest_cached_date = cached[-1].trade_date if cached else None
+        start_not_covered = (
+            start is not None and cached and cached[0].trade_date > start_date
+        )
+        end_is_stale = (
+            latest_cached_date is not None
+            and self._cache_end_is_stale(latest_cached_date, end_date)
+        )
+        needs_fetch = refresh or not cached or start_not_covered or end_is_stale
+
+        if needs_fetch:
+            try:
+                frame = fetch_stock_moneyflow(code, stock.exchange)
+            except (requests.RequestException, MoneyflowDataSourceError) as exc:
+                if not cached:
+                    raise HTTPException(
+                        status_code=503,
+                        detail=(
+                            "暂时无法从数据源获取资金流数据，"
+                            "请检查网络连接后重试。"
+                        ),
+                    ) from exc
+            else:
+                if frame.empty:
+                    if not cached:
+                        raise HTTPException(
+                            status_code=404,
+                            detail=f"暂无 {code} 的资金流数据",
+                        )
+                else:
+                    rows = frame.to_dict(orient="records")
+                    self.moneyflow_repo.replace_range(code, rows)
+                    cached = self.moneyflow_repo.get_range(code, start_date, end_date)
+
+        bars = [
+            MoneyflowBar(
+                date=bar.trade_date,
+                main_net_inflow=bar.main_net_inflow,
+                main_net_ratio=bar.main_net_ratio,
+                super_large_net_inflow=bar.super_large_net_inflow,
+                large_net_inflow=bar.large_net_inflow,
+                medium_net_inflow=bar.medium_net_inflow,
+                small_net_inflow=bar.small_net_inflow,
+            )
+            for bar in cached
+        ]
+
+        return MoneyflowResponse(
+            code=stock.code,
+            name=stock.name,
+            source="akshare_em",
+            bars=bars,
+        )
+
+    def get_latest_moneyflow(self, code: str, refresh: bool = False) -> MoneyflowBar | None:
+        response = self.get_moneyflow(code, refresh=refresh)
+        if not response.bars:
+            return None
+        return response.bars[-1]

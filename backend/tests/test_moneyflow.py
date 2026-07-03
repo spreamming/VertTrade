@@ -7,8 +7,35 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from backend.app.collectors import moneyflow_collector
+from backend.app.collectors.moneyflow_collector import MoneyflowDataSourceError
 from backend.app.database import Base, get_db
 from backend.app.main import app
+
+
+def _fake_moneyflow_frame() -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "trade_date": date(2026, 7, 1),
+                "main_net_inflow": 100000000.0,
+                "main_net_ratio": 3.5,
+                "super_large_net_inflow": 40000000.0,
+                "large_net_inflow": 60000000.0,
+                "medium_net_inflow": -20000000.0,
+                "small_net_inflow": -80000000.0,
+            },
+            {
+                "trade_date": date(2026, 7, 2),
+                "main_net_inflow": -50000000.0,
+                "main_net_ratio": -2.1,
+                "super_large_net_inflow": -20000000.0,
+                "large_net_inflow": -30000000.0,
+                "medium_net_inflow": 10000000.0,
+                "small_net_inflow": 40000000.0,
+            },
+        ]
+    )
 
 
 @pytest.fixture
@@ -64,21 +91,6 @@ def client(monkeypatch):
             ]
         )
 
-    def fake_moneyflow(code: str, exchange: str | None = None) -> pd.DataFrame:
-        return pd.DataFrame(
-            [
-                {
-                    "trade_date": date(2026, 7, 2),
-                    "main_net_inflow": 85000000.0,
-                    "main_net_ratio": 4.2,
-                    "super_large_net_inflow": 30000000.0,
-                    "large_net_inflow": 55000000.0,
-                    "medium_net_inflow": None,
-                    "small_net_inflow": None,
-                },
-            ]
-        )
-
     monkeypatch.setattr(
         "backend.app.services.stock_service.fetch_stock_list",
         fake_stock_list,
@@ -89,7 +101,7 @@ def client(monkeypatch):
     )
     monkeypatch.setattr(
         "backend.app.services.stock_service.fetch_stock_moneyflow",
-        fake_moneyflow,
+        lambda code, exchange=None: _fake_moneyflow_frame(),
     )
 
     app.dependency_overrides[get_db] = override_get_db
@@ -98,53 +110,43 @@ def client(monkeypatch):
     app.dependency_overrides.clear()
 
 
-def test_add_and_list_watchlist_item(client: TestClient):
-    response = client.post("/api/watchlist", json={"code": "600519"})
-
-    assert response.status_code == 201
-    created = response.json()
-    assert created["code"] == "600519"
-    assert created["name"] == "贵州茅台"
-    assert created["latest_price"] == 105.0
-
-    list_response = client.get("/api/watchlist")
-
-    assert list_response.status_code == 200
-    payload = list_response.json()
-    assert len(payload) == 1
-    assert payload[0]["change_amount"] == 2.0
-    assert payload[0]["position_score"] == 85.71
-    assert payload[0]["position_label"] == "高位观察区"
-    assert payload[0]["main_net_inflow"] == 85000000.0
-    assert payload[0]["main_net_ratio"] == 4.2
-
-
-def test_adding_same_stock_is_idempotent(client: TestClient):
-    first = client.post("/api/watchlist", json={"code": "600519"}).json()
-    second = client.post("/api/watchlist", json={"code": "600519"}).json()
-
-    assert first["id"] == second["id"]
-    assert len(client.get("/api/watchlist").json()) == 1
-
-
-def test_delete_watchlist_item(client: TestClient):
-    created = client.post("/api/watchlist", json={"code": "600519"}).json()
-
-    delete_response = client.delete(f"/api/watchlist/{created['id']}")
-
-    assert delete_response.status_code == 204
-    assert client.get("/api/watchlist").json() == []
-
-
-def test_dashboard_returns_watchlist_summary(client: TestClient):
-    client.post("/api/watchlist", json={"code": "600519"})
-
-    response = client.get("/api/dashboard")
+def test_get_stock_moneyflow(client: TestClient):
+    response = client.get("/api/stocks/600519/moneyflow")
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["watchlist_count"] == 1
-    assert payload["watchlist_summary"][0]["code"] == "600519"
-    assert payload["watchlist_summary"][0]["position_label"] == "高位观察区"
-    assert payload["watchlist_summary"][0]["main_net_inflow"] == 85000000.0
-    assert payload["market_notes"]
+    assert payload["code"] == "600519"
+    assert payload["source"] == "akshare_em"
+    assert len(payload["bars"]) == 2
+    assert payload["bars"][0]["main_net_inflow"] == 100000000.0
+    assert payload["bars"][1]["main_net_ratio"] == -2.1
+
+
+def test_watchlist_includes_moneyflow_summary(client: TestClient):
+    client.post("/api/watchlist", json={"code": "600519"})
+    payload = client.get("/api/watchlist").json()
+
+    assert payload[0]["main_net_inflow"] == -50000000.0
+    assert payload[0]["main_net_ratio"] == -2.1
+    assert payload[0]["moneyflow_date"] == "2026-07-02"
+
+
+def test_moneyflow_collector_validates_required_columns(monkeypatch):
+    def fake_source(stock: str, market: str) -> pd.DataFrame:
+        return pd.DataFrame(
+            [
+                {
+                    "日期": "2026-07-02",
+                    "主力净流入-净额": 100.0,
+                }
+            ]
+        )
+
+    monkeypatch.setattr(
+        moneyflow_collector.ak,
+        "stock_individual_fund_flow",
+        fake_source,
+    )
+
+    with pytest.raises(MoneyflowDataSourceError, match="资金流数据源缺少字段"):
+        moneyflow_collector.fetch_stock_moneyflow("600519", "SH")

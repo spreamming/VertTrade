@@ -56,3 +56,20 @@ class StockPosition(BaseModel):
     position_score: float
     zone: str
     label: str
+
+
+class MoneyflowBar(BaseModel):
+    date: date
+    main_net_inflow: float
+    main_net_ratio: float | None = None
+    super_large_net_inflow: float | None = None
+    large_net_inflow: float | None = None
+    medium_net_inflow: float | None = None
+    small_net_inflow: float | None = None
+
+
+class MoneyflowResponse(BaseModel):
+    code: str
+    name: str
+    source: str = "akshare_em"
+    bars: list[MoneyflowBar] = Field(default_factory=list)
