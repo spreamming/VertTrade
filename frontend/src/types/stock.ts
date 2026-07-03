@@ -39,6 +39,20 @@ export type StockQuote = {
   trade_date: string;
 };
 
+export type StockPosition = {
+  code: string;
+  name: string;
+  window: number;
+  sample_size: number;
+  trade_date: string;
+  latest_close: number;
+  rolling_low: number;
+  rolling_high: number;
+  position_score: number;
+  zone: string;
+  label: string;
+};
+
 export type WatchlistItem = {
   id: number;
   code: string;
@@ -52,6 +66,10 @@ export type WatchlistItem = {
   change_percent?: number | null;
   trade_date?: string | null;
   quote_error?: string | null;
+  position_score?: number | null;
+  position_label?: string | null;
+  position_window?: number | null;
+  position_error?: string | null;
   created_at: string;
 };
 

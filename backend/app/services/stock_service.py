@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from types import SimpleNamespace
 
 import requests
 from fastapi import HTTPException
@@ -6,16 +7,30 @@ from sqlalchemy.orm import Session
 
 from ..collectors.kline_collector import fetch_daily_kline
 from ..collectors.stock_basic_collector import fetch_stock_list
+from ..indicators.position_score import calculate_position_score
 from ..repositories.kline_repo import KlineRepository
 from ..repositories.stock_repo import StockRepository
-from ..schemas.stock import KlineBar, KlineResponse, StockQuote, StockSummary
+from ..schemas.stock import KlineBar, KlineResponse, StockPosition, StockQuote, StockSummary
 
 
 class StockService:
+    # Calendar-day tolerance before treating cached K-line end as stale (weekends/holidays).
+    _CACHE_END_TOLERANCE_DAYS = 4
+
     def __init__(self, db: Session):
         self.db = db
         self.stock_repo = StockRepository(db)
         self.kline_repo = KlineRepository(db)
+
+    @staticmethod
+    def _position_lookback_days(window: int) -> int:
+        return max(365, int(window * 1.8) + 30)
+
+    @classmethod
+    def _cache_end_is_stale(cls, latest_cached: date, end_date: date) -> bool:
+        if latest_cached >= end_date:
+            return False
+        return (end_date - latest_cached).days > cls._CACHE_END_TOLERANCE_DAYS
 
     def ensure_stock_catalog(self) -> None:
         if self.stock_repo.count() > 0:
@@ -49,7 +64,16 @@ class StockService:
         start_date = start or (end_date - timedelta(days=365))
 
         cached = self.kline_repo.get_range(code, start_date, end_date)
-        if refresh or not cached:
+        latest_cached_date = cached[-1].trade_date if cached else None
+        start_not_covered = (
+            start is not None and cached and cached[0].trade_date > start_date
+        )
+        end_is_stale = (
+            latest_cached_date is not None
+            and self._cache_end_is_stale(latest_cached_date, end_date)
+        )
+        needs_fetch = refresh or not cached or start_not_covered or end_is_stale
+        if needs_fetch:
             try:
                 frame = fetch_daily_kline(code, start_date, end_date)
             except requests.RequestException as exc:
@@ -91,8 +115,7 @@ class StockService:
 
         return KlineResponse(code=stock.code, name=stock.name, bars=bars)
 
-    def get_quote(self, code: str, refresh: bool = False) -> StockQuote:
-        kline = self.get_kline(code, refresh=refresh)
+    def _build_quote_from_kline(self, kline: KlineResponse, code: str) -> StockQuote:
         if not kline.bars:
             raise HTTPException(status_code=404, detail=f"暂无 {code} 的行情摘要")
 
@@ -123,3 +146,75 @@ class StockService:
             turnover_rate=latest.turnover_rate,
             trade_date=latest.date,
         )
+
+    def _build_position_from_kline(
+        self,
+        kline: KlineResponse,
+        code: str,
+        window: int,
+    ) -> StockPosition:
+        bars = [
+            SimpleNamespace(
+                trade_date=bar.date,
+                high=bar.high,
+                low=bar.low,
+                close=bar.close,
+            )
+            for bar in kline.bars
+        ]
+        result = calculate_position_score(bars, window=window)
+        if result is None:
+            raise HTTPException(status_code=404, detail=f"暂无 {code} 的价格位置数据")
+
+        return StockPosition(
+            code=kline.code,
+            name=kline.name,
+            window=window,
+            sample_size=result.sample_size,
+            trade_date=result.trade_date,
+            latest_close=result.latest_close,
+            rolling_low=result.rolling_low,
+            rolling_high=result.rolling_high,
+            position_score=result.position_score,
+            zone=result.zone,
+            label=result.label,
+        )
+
+    def _validate_position_window(self, window: int) -> None:
+        if window not in (250, 750, 1250):
+            raise HTTPException(
+                status_code=400,
+                detail="价格位置窗口仅支持 250、750、1250 个交易日",
+            )
+
+    def get_quote(self, code: str, refresh: bool = False) -> StockQuote:
+        kline = self.get_kline(code, refresh=refresh)
+        return self._build_quote_from_kline(kline, code)
+
+    def get_position(
+        self,
+        code: str,
+        window: int = 250,
+        refresh: bool = False,
+    ) -> StockPosition:
+        self._validate_position_window(window)
+
+        end_date = date.today()
+        start_date = end_date - timedelta(days=self._position_lookback_days(window))
+        kline = self.get_kline(code, start=start_date, end=end_date, refresh=refresh)
+        return self._build_position_from_kline(kline, code, window)
+
+    def get_quote_and_position(
+        self,
+        code: str,
+        window: int = 250,
+        refresh: bool = False,
+    ) -> tuple[StockQuote, StockPosition]:
+        self._validate_position_window(window)
+
+        end_date = date.today()
+        start_date = end_date - timedelta(days=self._position_lookback_days(window))
+        kline = self.get_kline(code, start=start_date, end=end_date, refresh=refresh)
+        quote = self._build_quote_from_kline(kline, code)
+        position = self._build_position_from_kline(kline, code, window)
+        return quote, position

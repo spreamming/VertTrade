@@ -36,12 +36,26 @@ The recommended development path is:
 4. Add near real-time market watch features: live quotes, intraday K-line, time-sharing chart, and watchlist fast refresh.
 5. Package the stable local app as a private desktop application.
 
+## Git Commit Policy (IMPORTANT)
+
+> **Only `spreamming <fredspream@gmail.com>` may appear as a contributor.**
+>
+> Never add `Co-authored-by: Cursor <cursoragent@cursor.com>` or any other assistant co-author trailer. GitHub treats those trailers as real contributors even when author/committer are correct.
+>
+> Before every commit and push, verify with:
+>
+> `git log -1 --format='%an <%ae>%n%cn <%ce>%n%B'`
+>
+> If a co-author trailer appears, recreate the commit without it before pushing. See `.cursor/rules/Git-Rules.mdc` for the safe `git commit-tree` pattern.
+
+Older pushed commits before `dd0b997` may still contain Cursor co-author trailers in history. New commits must not repeat that mistake.
+
 ## Current Repository Progress
 
 - GitHub repo: `https://github.com/spreamming/VertTrade.git`
 - Local branch: `main`
 - Remote: `origin`
-- Latest pushed commit on `main`: `7ca4d43 stage 1`
+- Latest pushed commit on `main`: `dd0b997 stage 2`
 - Correct Git identity for commits: `spreamming <fredspream@gmail.com>`
 - Repo-local Git identity is configured in `.git/config` so future commits in this repo use the correct author.
 
@@ -66,7 +80,7 @@ Initial scaffold already created:
 
 Dependencies have been installed locally.
 
-Stage 0 and Phase 1 are complete and pushed. Phase 2 watchlist/Dashboard MVP is implemented and verified locally, but has not been committed or pushed.
+Stage 0, Phase 1, and Phase 2 watchlist/Dashboard MVP are complete and pushed. Phase 3 price-position / top-bottom zone MVP is implemented and verified locally, but has not been committed or pushed.
 
 Current verification commands have passed:
 
@@ -85,8 +99,10 @@ Current verification commands have passed:
 - Keep MVP scope focused: K-line, volume, search, watchlist, price position, top/bottom zone, and money flow first.
 - Delay AI, news, finance, backtesting, complex alerts, and desktop packaging until the core workflow is stable.
 - Do not change global Git configuration unless the user explicitly asks.
+- **Git commits must never include Cursor or any assistant as co-author.** Only `spreamming <fredspream@gmail.com>` is allowed on GitHub contributor history for new work.
 - Use commit identity `spreamming <fredspream@gmail.com>` for commits in this repo.
 - Repo-local Git identity is already set: `user.name=spreamming`, `user.email=fredspream@gmail.com`.
+- Before commit/push, verify the latest commit body has no `Co-authored-by:` trailer.
 - Do not create commits or push unless the user explicitly asks.
 - Be careful with user changes in the working tree; do not revert unrelated edits unless asked.
 - User terminal preference to preserve: Windows 11 / PowerShell style, use `py` for Python files, and avoid command chaining with `&&`.
@@ -115,3 +131,7 @@ Current verification commands have passed:
 - Implemented Phase 2 MVP: local watchlist model/repository/API, Dashboard API, Chinese Dashboard page, watchlist add/delete flow, watchlist table with quote summary, and navigation from watchlist to stock detail. Major index and market breadth data remain planned for later Dashboard expansion.
 - Added root-level `suggestion.md` as the overwrite-style builder guidance file that summarizes the latest checker run and recommended fixes after each check process.
 - Applied `suggestion.md` follow-up fixes for Phase 2: refreshed stale `AGENT_LOG.md` repository metadata, documented current app flow and verification commands in `README.md`, added `pytest.ini` for stable repo-root test discovery, and re-ran backend tests plus frontend typecheck/build successfully.
+- Committed and pushed `dd0b997 stage 2` without any `Co-authored-by` trailer after user reported Cursor Agent appearing on GitHub from earlier co-author lines.
+- Highlighted permanent Git policy in `AGENT_LOG.md`, `.cursor/rules/Git-Rules.mdc`, and `market_watch_development_plan.md`: only `spreamming <fredspream@gmail.com>` may appear as contributor; never add Cursor co-author trailers on new commits.
+- Implemented Phase 3 MVP: backend price-position indicator based on rolling high/low range, `/api/stocks/{code}/position`, 250/750/1250-day backend windows, Chinese top/bottom zone labels, stock detail position card, and watchlist position labels. Verified backend tests, frontend typecheck, and frontend build.
+- Applied `suggestion.md` Phase 3 follow-ups: tightened K-line cache end-date freshness (4-day calendar tolerance for weekends/holidays), refactored quote + position to reuse one K-line lookup via `get_quote_and_position`, and added direct `position_score` boundary unit tests (24 backend tests pass).

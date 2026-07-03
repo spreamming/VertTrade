@@ -106,3 +106,22 @@ def test_get_stock_quote(client: TestClient):
     payload = response.json()
     assert payload["latest_price"] == 105.0
     assert payload["change_amount"] == 2.0
+
+
+def test_get_stock_position(client: TestClient):
+    response = client.get("/api/stocks/600519/position", params={"window": 250})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["code"] == "600519"
+    assert payload["sample_size"] == 2
+    assert payload["position_score"] == 85.71
+    assert payload["zone"] == "high_watch"
+    assert payload["label"] == "高位观察区"
+
+
+def test_get_stock_position_rejects_unsupported_window(client: TestClient):
+    response = client.get("/api/stocks/600519/position", params={"window": 100})
+
+    assert response.status_code == 400
+    assert "250、750、1250" in response.json()["detail"]

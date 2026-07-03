@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..schemas.stock import KlineResponse, StockQuote, StockSummary
+from ..schemas.stock import KlineResponse, StockPosition, StockQuote, StockSummary
 from ..services.stock_service import StockService
 
 router = APIRouter(prefix="/api/stocks", tags=["stocks"])
@@ -41,3 +41,13 @@ def get_stock_quote(
     service: StockService = Depends(get_stock_service),
 ):
     return service.get_quote(code, refresh=refresh)
+
+
+@router.get("/{code}/position", response_model=StockPosition)
+def get_stock_position(
+    code: str,
+    window: int = Query(default=250),
+    refresh: bool = False,
+    service: StockService = Depends(get_stock_service),
+):
+    return service.get_position(code, window=window, refresh=refresh)

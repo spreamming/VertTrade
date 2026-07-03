@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { getStockKline, type KlineResponse, type StockQuote, type StockSummary } from "../api/client";
+import {
+  getStockKline,
+  getStockPosition,
+  type KlineResponse,
+  type StockPosition,
+  type StockQuote,
+  type StockSummary,
+} from "../api/client";
 import { KLineChart } from "../components/KLineChart";
+import { PositionCard } from "../components/PositionCard";
 import { buildQuoteFromKline } from "../utils/quote";
 
 type StockDetailProps = {
@@ -22,6 +30,7 @@ function formatNumber(value: number | null | undefined, digits = 2): string {
 export function StockDetail({ stock, onBack }: StockDetailProps) {
   const [quote, setQuote] = useState<StockQuote | null>(null);
   const [kline, setKline] = useState<KlineResponse | null>(null);
+  const [position, setPosition] = useState<StockPosition | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,6 +41,7 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
 
       try {
         const klineData = await getStockKline(stock.code, refresh);
+        const positionData = await getStockPosition(stock.code, 250, refresh);
         const quoteData = buildQuoteFromKline(stock, klineData.bars);
 
         if (!quoteData) {
@@ -40,6 +50,7 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
 
         setQuote(quoteData);
         setKline(klineData);
+        setPosition(positionData);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "加载个股数据失败");
       } finally {
@@ -115,6 +126,8 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
           </div>
         </section>
       ) : null}
+
+      <PositionCard position={position} loading={loading} />
 
       {kline && kline.bars.length > 0 ? (
         <section className="chart-panel">

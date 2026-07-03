@@ -94,6 +94,8 @@ def test_add_and_list_watchlist_item(client: TestClient):
     payload = list_response.json()
     assert len(payload) == 1
     assert payload[0]["change_amount"] == 2.0
+    assert payload[0]["position_score"] == 85.71
+    assert payload[0]["position_label"] == "高位观察区"
 
 
 def test_adding_same_stock_is_idempotent(client: TestClient):
@@ -122,4 +124,5 @@ def test_dashboard_returns_watchlist_summary(client: TestClient):
     payload = response.json()
     assert payload["watchlist_count"] == 1
     assert payload["watchlist_summary"][0]["code"] == "600519"
+    assert payload["watchlist_summary"][0]["position_label"] == "高位观察区"
     assert payload["market_notes"]

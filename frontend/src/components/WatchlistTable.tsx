@@ -47,6 +47,7 @@ export function WatchlistTable({
             <th>代码</th>
             <th>最新价</th>
             <th>涨跌幅</th>
+            <th>价格位置</th>
             <th>交易日期</th>
             <th>操作</th>
           </tr>
@@ -85,6 +86,20 @@ export function WatchlistTable({
                 </td>
                 <td>{formatNumber(item.latest_price)}</td>
                 <td className={changeClass}>{formatPercent(item.change_percent)}</td>
+                <td>
+                  {item.position_score !== null &&
+                  item.position_score !== undefined &&
+                  item.position_label ? (
+                    <span className="position-chip">
+                      {item.position_label} · {formatNumber(item.position_score)}分
+                    </span>
+                  ) : (
+                    "--"
+                  )}
+                  {item.position_error ? (
+                    <p className="table-note">{item.position_error}</p>
+                  ) : null}
+                </td>
                 <td>{item.trade_date ?? "--"}</td>
                 <td>
                   <button

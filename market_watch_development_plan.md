@@ -24,6 +24,36 @@
 
 ---
 
+## 1.5 仓库与 Git 规范（重要）
+
+本项目在 GitHub 上只允许一个贡献者：
+
+- `spreamming <fredspream@gmail.com>`
+
+**必须遵守：**
+
+- 新提交不得包含 `Co-authored-by:` 共同作者行；
+- 不得把 Cursor、Cursor Agent、`cursoragent@cursor.com` 或其他助手写进提交信息；
+- 即使 author / committer 已经是 `spreamming`，GitHub 仍会把 `Co-authored-by:` 识别为额外贡献者；
+- 每次 commit / push 前，用下面命令检查最新提交正文：
+
+```bash
+git log -1 --format='%an <%ae>%n%cn <%ce>%n%B'
+```
+
+**如果 Cursor 自动插入 co-author trailer：**
+
+- 不要 push；
+- 改用无 trailer 的提交方式重建 commit（见 `.cursor/rules/Git-Rules.mdc` 中的 `git commit-tree` 示例）；
+- 只有在用户明确要求时，才考虑重写已推送历史来清理旧 co-author 记录。
+
+**当前说明：**
+
+- `dd0b997 stage 2` 及之后的新提交必须保持“单一贡献者”；
+- 更早的历史提交里可能仍残留 Cursor co-author trailer，那是旧记录，不应在新工作中重复。
+
+---
+
 ## 2. 推荐技术路线
 
 ### 2.1 前端
@@ -566,6 +596,15 @@ MVP 阶段建议优先使用 AKShare 中封装的东方财富资金流相关接�
 - 可以看到顶部红色区域和底部绿色区域；
 - 可以切换不同时间窗口；
 - 自选股列表能显示“高位/中性/低位”。
+
+当前实现状态（2026-07-03）：
+
+- 已实现个股价格位置 API：`/api/stocks/{code}/position`；
+- 已支持 250、750、1250 个交易日窗口的后端计算；
+- 已实现 0-100 价格位置分数和中文区域标签：深度底部区、底部观察区、中性区、高位观察区、顶部风险区；
+- 已在个股详情页显示 250 日价格位置卡片、区间高低点、样本数量和非交易信号说明；
+- 已在自选股列表显示当前价格位置标签和分数；
+- 指数价格位置、UI 窗口切换和 K 线背景染色仍留待后续增强。
 
 ---
 

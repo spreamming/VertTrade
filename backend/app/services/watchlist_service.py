@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from ..models import WatchlistItem
 from ..repositories.stock_repo import StockRepository
 from ..repositories.watchlist_repo import WatchlistRepository
-from ..schemas.stock import StockQuote
+from ..schemas.stock import StockPosition, StockQuote
 from ..schemas.watchlist import DashboardResponse, WatchlistCreate, WatchlistItemResponse
 from .stock_service import StockService
 
@@ -52,11 +52,15 @@ class WatchlistService:
         stock = self.stock_repo.get_by_code(item.code)
         quote: StockQuote | None = None
         quote_error: str | None = None
+        position: StockPosition | None = None
+        position_error: str | None = None
 
         try:
-            quote = self.stock_service.get_quote(item.code)
+            quote, position = self.stock_service.get_quote_and_position(item.code)
         except HTTPException as exc:
-            quote_error = str(exc.detail)
+            detail = str(exc.detail)
+            quote_error = detail
+            position_error = detail
 
         return WatchlistItemResponse(
             id=item.id,
@@ -71,5 +75,9 @@ class WatchlistService:
             change_percent=quote.change_percent if quote else None,
             trade_date=quote.trade_date.isoformat() if quote else None,
             quote_error=quote_error,
+            position_score=position.position_score if position else None,
+            position_label=position.label if position else None,
+            position_window=position.window if position else None,
+            position_error=position_error,
             created_at=item.created_at,
         )

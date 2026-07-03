@@ -46,7 +46,7 @@ VertTrade/
 
 ## Current Stage
 
-Stage 0 and Phase 1 are complete. Phase 2 (watchlist and Dashboard MVP) is now implemented.
+Stage 0, Phase 1, and Phase 2 are complete. Phase 3 (price-position / top-bottom zone MVP) is now implemented.
 
 You can:
 
@@ -57,12 +57,14 @@ You can:
 5. Add searched stocks to a local watchlist.
 6. View and delete watchlist items from the Dashboard.
 7. Open stock detail pages directly from the watchlist.
+8. View a 0-100 price-position score and top/bottom zone label on stock detail pages.
+9. See the current price-position label in the watchlist table.
 
 Next target:
 
-1. Price-position / top-bottom zone indicator.
-2. Main money-flow MVP.
-3. Major index and market overview data for the Dashboard.
+1. Main money-flow MVP.
+2. Major index and market overview data for the Dashboard.
+3. Broader price-position support for indices and additional windows in the UI.
 
 ## Local Setup
 

@@ -22,6 +22,10 @@ class WatchlistItemResponse(BaseModel):
     change_percent: float | None = None
     trade_date: str | None = None
     quote_error: str | None = None
+    position_score: float | None = None
+    position_label: str | None = None
+    position_window: int | None = None
+    position_error: str | None = None
     created_at: datetime
 
 

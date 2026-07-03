@@ -42,3 +42,17 @@ class KlineResponse(BaseModel):
     name: str
     period: str = "daily"
     bars: list[KlineBar] = Field(default_factory=list)
+
+
+class StockPosition(BaseModel):
+    code: str
+    name: str
+    window: int
+    sample_size: int
+    trade_date: date
+    latest_close: float
+    rolling_low: float
+    rolling_high: float
+    position_score: float
+    zone: str
+    label: str

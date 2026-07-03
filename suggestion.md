@@ -2,103 +2,110 @@
 
 This file summarizes the latest checker process and gives focused suggestions for the next builder agent. It should be overwritten after every future checker run.
 
-**Last checker run:** 2026-07-03 (third run)  
-**Scope checked:** Stage 0 + Phase 1 on remote, Phase 2 watchlist MVP in local working tree  
+**Last checker run:** 2026-07-03 (fourth run)  
+**Scope checked:** Phase 3 price-position / top-bottom zone MVP  
 **Source report:** `CHECKER_LOG.md`
 
 ---
 
 ## Checker Summary
 
-The checker verified that Stage 0 and Phase 1 are already committed and pushed. The latest remote commit is `7ca4d43 stage 1`.
+The checker verified the Phase 3 price-position MVP.
 
-The current local work implements a Phase 2 watchlist and Dashboard MVP. It adds watchlist CRUD, a Dashboard API, a Chinese Dashboard page, a watchlist table with quote summaries, and navigation from watchlist rows to the stock detail page.
+Result: **PASS**.
 
-Verification results from the checker:
+Verified behavior:
 
-- Backend tests pass: 8/8.
+- Backend tests pass: 10/10.
 - Frontend typecheck passes.
 - Frontend production build passes.
-- Live watchlist API and Dashboard API checks pass.
-- No brokerage login, order placement, auto-trading, or credential storage was introduced.
-
-Overall verdict: **good, on plan, but uncommitted**.
-
----
-
-## Main Problems To Fix
-
-1. **Phase 2 work is not committed or pushed**
-   - The watchlist/Dashboard MVP exists only in the local working tree.
-   - Remote is still at `stage 1`.
-   - Do not commit unless the user explicitly asks.
-
-2. **`AGENT_LOG.md` top metadata is stale**
-   - It still says latest pushed commit is `agent log created`.
-   - It still says dependencies and runtime tests have not been run.
-   - This contradicts the actual progress log and checker results.
-
-3. **Phase 2 is only a watchlist MVP**
-   - Watchlist CRUD and dashboard summary are done.
-   - Major indices, market breadth, turnover, and richer market overview are still deferred.
-   - Keep calling it "Phase 2 MVP" unless those deferred items are implemented.
-
-4. **Test command is still not standardized**
-   - Tests pass with `.venv/bin/python -m pytest backend/tests/`.
-   - Consider adding `pytest.ini` or documenting this exact command in `README.md`.
-
-5. **Minor cleanup remains**
-   - `echarts` is listed as a frontend dependency but is not used yet.
-   - Confirm `frontend/tsconfig.tsbuildinfo` is ignored and does not reappear as untracked.
+- Live `/api/stocks/600519/position?window=250` returns 200 OK.
+- Stock detail page displays a Chinese price-position card.
+- Watchlist table displays price-position label and score.
+- The UI correctly avoids buy/sell signal language.
+- No trading, brokerage, account, order, or credential functionality was introduced.
 
 ---
 
-## Suggested Builder Actions
+## Builder Fix Suggestions
 
-### First priority
+### 1. Tighten K-line cache freshness
 
-Update `AGENT_LOG.md` Current Repository Progress so it reflects reality:
+`StockService.get_kline()` should verify that cached K-line data reaches the requested `end_date`.
 
-- Latest pushed commit: `7ca4d43 stage 1`.
-- Stage 0 and Phase 1 are complete and pushed.
-- Phase 2 watchlist MVP is implemented locally and verified, but not pushed.
-- Dependencies are installed.
-- Backend tests and frontend build/typecheck have been run successfully.
+Current behavior mostly checks whether cache exists and whether the cached start date covers the requested start date. This can allow stale cached data to be reused for quote and position calculations.
 
-### Second priority
+Suggested fix:
 
-Update `README.md` to describe the current app flow:
+- After reading cached bars, compare the latest cached `trade_date` with the requested `end_date`.
+- If cached data is older than the latest expected trade date, fetch again or use a controlled refresh policy.
+- Be careful with weekends and holidays; do not assume every calendar day is a trading day.
 
-- Start backend and frontend.
-- Search A-share stock code/name.
-- Open stock detail with K-line and volume.
-- Add/delete watchlist items from Dashboard.
-- Explain that major indices and market overview are planned later.
+### 2. Reduce repeated K-line loading
 
-### Third priority
+The current flow is functionally correct, but may do repeated work:
 
-Stabilize test/documentation workflow:
+- `StockDetail` loads K-line data, then separately loads price-position data.
+- `WatchlistService` gets quote data and position data separately for each watchlist item.
 
-- Add a `pytest.ini` with repo-root import behavior, or document `.venv/bin/python -m pytest backend/tests/`.
-- Keep frontend validation commands documented: `npx tsc --noEmit` and `npm run build`.
+Suggested fix:
 
-### Commit guidance
+- Reuse the same K-line series to derive quote and price position where possible.
+- Consider a service-level helper that returns quote + position from one K-line lookup.
+- For watchlist summaries, consider batching or caching per request to avoid repeated data-source calls.
 
-If the user asks to commit, stage the Phase 2 files and use a message like:
+### 3. Add direct indicator boundary tests
 
-```text
-stage 2 watchlist
-```
+Current tests cover the position endpoint and invalid window rejection. Add unit tests for `calculate_position_score()` / `classify_position_zone()`.
 
-Only commit and push after explicit user instruction.
+Recommended cases:
+
+- `0-10`: 深度底部区
+- `10-20`: 底部观察区
+- `20-80`: 中性区
+- `80-90`: 高位观察区
+- `90-100`: 顶部风险区
+- Flat high/low range should return neutral `50.0`.
+- Scores should be clamped to `0-100`.
+
+### 4. Keep Phase 3 wording conservative
+
+Continue using wording like:
+
+- 价格位置
+- 风险区域
+- 底部观察区
+- 高位观察区
+
+Avoid wording like:
+
+- 买入
+- 卖出
+- 建仓
+- 清仓
+- 交易信号
+
+This keeps the feature aligned with the project boundary: personal market analysis only, not trading advice or automation.
+
+### 5. Dashboard market overview remains later work
+
+The checker confirms this is still acceptable:
+
+- Major indices are not implemented yet.
+- Market breadth is not implemented yet.
+- Turnover / broader market overview is not implemented yet.
+
+Keep these as later Dashboard expansion tasks unless the user explicitly asks to prioritize them.
 
 ---
 
-## Next Development Direction
+## Suggested Next Build Direction
 
-After Phase 2 watchlist MVP is committed, the next useful builder step is either:
+Best next technical step: stabilize the price-position data path before adding more indicators.
 
-- Complete the remaining Dashboard market overview items: major indices, market breadth, turnover, and market notes backed by data.
-- Start Phase 3: price position / top-bottom zone indicator.
+Recommended order:
 
-Do not start trading, brokerage, account, order, or credential features.
+1. Improve K-line cache freshness.
+2. Refactor quote + position calculations to reuse K-line data.
+3. Add direct unit tests for position score boundaries.
+4. Then continue toward either Dashboard market overview or Phase 4 money-flow MVP.

@@ -1,6 +1,7 @@
 import type {
   DashboardResponse,
   KlineResponse,
+  StockPosition,
   StockQuote,
   StockSummary,
   WatchlistItem,
@@ -15,7 +16,14 @@ export type HealthResponse = {
   database: string;
 };
 
-export type { DashboardResponse, KlineResponse, StockQuote, StockSummary, WatchlistItem };
+export type {
+  DashboardResponse,
+  KlineResponse,
+  StockPosition,
+  StockQuote,
+  StockSummary,
+  WatchlistItem,
+};
 
 async function parseErrorMessage(response: Response, path: string): Promise<string> {
   const fallback = `请求失败：${path}`;
@@ -97,6 +105,18 @@ export async function getStockQuote(
   return request<StockQuote>(
     `/api/stocks/${code}/quote${query ? `?${query}` : ""}`,
   );
+}
+
+export async function getStockPosition(
+  code: string,
+  window = 250,
+  refresh = false,
+): Promise<StockPosition> {
+  const params = new URLSearchParams({ window: String(window) });
+  if (refresh) {
+    params.set("refresh", "true");
+  }
+  return request<StockPosition>(`/api/stocks/${code}/position?${params.toString()}`);
 }
 
 export async function getDashboard(): Promise<DashboardResponse> {
