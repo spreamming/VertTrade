@@ -25,6 +25,7 @@ The planned architecture is local-app first:
 - Frontend: React, TypeScript, Vite.
 - Charts: TradingView Lightweight Charts and/or ECharts.
 - Data sources: AKShare first, with pytdx/Tushare as possible supplements.
+- Real-time market watch: planned as a later stage after core analysis features, starting with 1-3 second quote refresh, intraday K-line, time-sharing chart, and watchlist fast refresh. True tick/Level-2 data is a later evaluation item and may require paid/professional data sources.
 - Desktop packaging: Tauri or Electron after the local web app MVP is stable.
 
 The recommended development path is:
@@ -32,14 +33,15 @@ The recommended development path is:
 1. Build and stabilize a local web app.
 2. Implement K-line, watchlist, price-position, and money-flow MVP features.
 3. Add sectors, rankings, and daily review workflows.
-4. Package the stable local app as a private desktop application.
+4. Add near real-time market watch features: live quotes, intraday K-line, time-sharing chart, and watchlist fast refresh.
+5. Package the stable local app as a private desktop application.
 
 ## Current Repository Progress
 
 - GitHub repo: `https://github.com/spreamming/VertTrade.git`
 - Local branch: `main`
 - Remote: `origin`
-- Latest pushed commit on `main`: `agent log created`
+- Latest pushed commit on `main`: `7ca4d43 stage 1`
 - Correct Git identity for commits: `spreamming <fredspream@gmail.com>`
 - Repo-local Git identity is configured in `.git/config` so future commits in this repo use the correct author.
 
@@ -62,7 +64,15 @@ Initial scaffold already created:
 - `market_watch_requirements.md`
 - `market_watch_development_plan.md`
 
-Dependencies have not yet been installed, and runtime tests have not yet been run.
+Dependencies have been installed locally.
+
+Stage 0 and Phase 1 are complete and pushed. Phase 2 watchlist/Dashboard MVP is implemented and verified locally, but has not been committed or pushed.
+
+Current verification commands have passed:
+
+- `.venv/bin/python -m pytest backend/tests`
+- `npm run typecheck`
+- `npm run build`
 
 ## Agent Rules For This Project
 
@@ -101,3 +111,7 @@ Dependencies have not yet been installed, and runtime tests have not yet been ru
 - Verified Phase 1 live flow: search for `600519` returns 贵州茅台, K-line API returns cached daily bars, backend tests (4) pass, frontend typecheck/build pass.
 - Fixed stock detail "Failed to fetch": AKShare requests now bypass broken system proxy settings, backend returns clear 503 errors instead of crashing, frontend uses one K-line request (quote derived locally), Vite dev proxy added for `/api`, and error messages improved.
 - Updated frontend language requirement: all user-visible frontend text should be Simplified Chinese. Converted current frontend labels, buttons, placeholders, loading text, chart titles, and displayed error messages to Chinese; added the language rule to `market_watch_development_plan.md`.
+- Updated the project roadmap to include a later real-time market watch stage: near real-time quotes, intraday K-line, time-sharing chart, WebSocket/SSE-style frontend updates, watchlist fast refresh, and clear scope boundaries that this is still a personal analysis app rather than a trading terminal.
+- Implemented Phase 2 MVP: local watchlist model/repository/API, Dashboard API, Chinese Dashboard page, watchlist add/delete flow, watchlist table with quote summary, and navigation from watchlist to stock detail. Major index and market breadth data remain planned for later Dashboard expansion.
+- Added root-level `suggestion.md` as the overwrite-style builder guidance file that summarizes the latest checker run and recommended fixes after each check process.
+- Applied `suggestion.md` follow-up fixes for Phase 2: refreshed stale `AGENT_LOG.md` repository metadata, documented current app flow and verification commands in `README.md`, added `pytest.ini` for stable repo-root test discovery, and re-ran backend tests plus frontend typecheck/build successfully.

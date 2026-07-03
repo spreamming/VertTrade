@@ -46,7 +46,7 @@ VertTrade/
 
 ## Current Stage
 
-Stage 0 is complete. Phase 1 (basic market data and daily K-line MVP) is now implemented.
+Stage 0 and Phase 1 are complete. Phase 2 (watchlist and Dashboard MVP) is now implemented.
 
 You can:
 
@@ -54,14 +54,17 @@ You can:
 2. Open a stock detail page with latest quote summary.
 3. View daily K-line and volume charts with zoom, pan, and crosshair.
 4. Cache fetched K-line data in local SQLite.
+5. Add searched stocks to a local watchlist.
+6. View and delete watchlist items from the Dashboard.
+7. Open stock detail pages directly from the watchlist.
 
 Next target:
 
-1. Watchlist management.
-2. Dashboard with indices and watchlist summary.
-3. Price-position / top-bottom zone indicator.
+1. Price-position / top-bottom zone indicator.
+2. Main money-flow MVP.
+3. Major index and market overview data for the Dashboard.
 
-## Stage 0 Local Setup
+## Local Setup
 
 Create and activate a Python virtual environment, then install backend dependencies:
 
@@ -91,13 +94,34 @@ npm install
 npm run dev
 ```
 
-The frontend reads `VITE_API_BASE_URL` when provided and otherwise uses `http://127.0.0.1:8000`.
+The Vite dev server proxies `/api` to `http://127.0.0.1:8000`. `VITE_API_BASE_URL` can still be provided for non-dev deployments.
 
-Stage 0 is complete when:
+## Current App Flow
 
-- The backend starts and `/api/health` returns API and SQLite status.
-- The frontend starts and displays the Stage 0 readiness card.
-- The local SQLite database can be initialized under `data/market_watch.db`.
+1. Open `http://127.0.0.1:5173`.
+2. Search by A-share code or name.
+3. Add search results to the local watchlist from the Dashboard.
+4. Open a stock detail page from either search results or the watchlist.
+5. Review latest quote summary, daily K-line, and volume.
+6. Delete stocks from the watchlist when no longer needed.
+
+The Dashboard currently focuses on the watchlist MVP. Major indices, market breadth, turnover, and richer market overview data are planned later.
+
+## Verification
+
+Run backend tests from the repository root:
+
+```bash
+.venv/bin/python -m pytest backend/tests
+```
+
+Run frontend checks:
+
+```bash
+cd frontend
+npm run typecheck
+npm run build
+```
 
 ## Development Notes
 

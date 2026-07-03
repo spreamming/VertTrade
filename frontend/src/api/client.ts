@@ -1,4 +1,10 @@
-import type { KlineResponse, StockQuote, StockSummary } from "../types/stock";
+import type {
+  DashboardResponse,
+  KlineResponse,
+  StockQuote,
+  StockSummary,
+  WatchlistItem,
+} from "../types/stock";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
@@ -9,7 +15,7 @@ export type HealthResponse = {
   database: string;
 };
 
-export type { KlineResponse, StockQuote, StockSummary };
+export type { DashboardResponse, KlineResponse, StockQuote, StockSummary, WatchlistItem };
 
 async function parseErrorMessage(response: Response, path: string): Promise<string> {
   const fallback = `请求失败：${path}`;
@@ -34,11 +40,11 @@ async function parseErrorMessage(response: Response, path: string): Promise<stri
   return fallback;
 }
 
-async function request<T>(path: string): Promise<T> {
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
 
   try {
-    response = await fetch(`${API_BASE_URL}${path}`);
+    response = await fetch(`${API_BASE_URL}${path}`, init);
   } catch {
     throw new Error(
       "无法连接后端接口，请确认后端服务已在 8000 端口启动。",
@@ -47,6 +53,10 @@ async function request<T>(path: string): Promise<T> {
 
   if (!response.ok) {
     throw new Error(await parseErrorMessage(response, path));
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
   }
 
   return response.json();
@@ -87,4 +97,28 @@ export async function getStockQuote(
   return request<StockQuote>(
     `/api/stocks/${code}/quote${query ? `?${query}` : ""}`,
   );
+}
+
+export async function getDashboard(): Promise<DashboardResponse> {
+  return request<DashboardResponse>("/api/dashboard");
+}
+
+export async function getWatchlist(): Promise<WatchlistItem[]> {
+  return request<WatchlistItem[]>("/api/watchlist");
+}
+
+export async function addWatchlistItem(code: string): Promise<WatchlistItem> {
+  return request<WatchlistItem>("/api/watchlist", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ code }),
+  });
+}
+
+export async function deleteWatchlistItem(id: number): Promise<void> {
+  await request<void>(`/api/watchlist/${id}`, {
+    method: "DELETE",
+  });
 }

@@ -38,3 +38,26 @@ export type StockQuote = {
   turnover_rate?: number | null;
   trade_date: string;
 };
+
+export type WatchlistItem = {
+  id: number;
+  code: string;
+  name: string;
+  exchange: string;
+  group_name: string;
+  sort_order: number;
+  note?: string | null;
+  latest_price?: number | null;
+  change_amount?: number | null;
+  change_percent?: number | null;
+  trade_date?: string | null;
+  quote_error?: string | null;
+  created_at: string;
+};
+
+export type DashboardResponse = {
+  watchlist_count: number;
+  watchlist_summary: WatchlistItem[];
+  indices: Record<string, unknown>[];
+  market_notes: string[];
+};
