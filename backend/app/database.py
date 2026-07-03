@@ -27,6 +27,8 @@ def _ensure_sqlite_directory(database_url: str) -> None:
 
 
 def initialize_database() -> None:
+    from . import models  # noqa: F401
+
     _ensure_sqlite_directory(settings.database_url)
     Base.metadata.create_all(bind=engine)
 

@@ -36,6 +36,7 @@ pnpm-debug.log*
 # Frontend build output
 frontend/dist/
 frontend/.vite/
+frontend/*.tsbuildinfo
 
 # Local data
 data/*.db

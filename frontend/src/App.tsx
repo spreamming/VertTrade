@@ -1,60 +1,41 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
-import { getHealth, type HealthResponse } from "./api/client";
+import { type StockSummary } from "./api/client";
+import { SearchBox } from "./components/SearchBox";
+import { StockDetail } from "./pages/StockDetail";
 import "./styles.css";
 
 function App() {
-  const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [selectedStock, setSelectedStock] = useState<StockSummary | null>(null);
 
-  useEffect(() => {
-    getHealth()
-      .then(setHealth)
-      .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : "Unknown API error");
-      });
-  }, []);
+  if (selectedStock) {
+    return (
+      <StockDetail
+        stock={selectedStock}
+        onBack={() => setSelectedStock(null)}
+      />
+    );
+  }
 
   return (
     <main className="app-shell">
       <section className="hero">
-        <p className="eyebrow">Personal A-share market watch</p>
+        <p className="eyebrow">个人 A 股看盘工具</p>
         <h1>VertTrade</h1>
         <p>
-          A private desktop-first market analysis platform for K-lines, price
-          position, top/bottom risk zones, money flow, sectors, and watchlists.
+          搜索 A 股代码或名称，查看日 K 线、成交量和最新行情摘要。
         </p>
       </section>
 
-      <section className="status-card">
-        <h2>Stage 0 Readiness</h2>
-        {health ? (
-          <dl className="status-grid">
-            <div>
-              <dt>API</dt>
-              <dd>{health.status}</dd>
-            </div>
-            <div>
-              <dt>SQLite</dt>
-              <dd>{health.database}</dd>
-            </div>
-            <div>
-              <dt>Environment</dt>
-              <dd>{health.environment}</dd>
-            </div>
-          </dl>
-        ) : (
-          <p>{error ?? "Checking backend..."}</p>
-        )}
-      </section>
+      <SearchBox onSelect={setSelectedStock} />
 
       <section className="status-card">
-        <h2>Foundation Scope</h2>
+        <h2>第一阶段功能</h2>
         <ul className="stage-list">
-          <li>FastAPI backend with CORS enabled for local Vite.</li>
-          <li>React + TypeScript frontend connected to the health endpoint.</li>
-          <li>SQLite database file initialized under local project data.</li>
-          <li>Next: fetch and cache the first daily K-line dataset.</li>
+          <li>支持按股票代码或名称搜索。</li>
+          <li>打开个股详情页，查看最新行情摘要。</li>
+          <li>查看日 K 线和成交量，支持缩放、拖动和十字光标。</li>
+          <li>拉取到的 K 线数据会缓存到本地 SQLite。</li>
         </ul>
       </section>
     </main>

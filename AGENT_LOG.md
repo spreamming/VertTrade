@@ -97,3 +97,7 @@ Dependencies have not yet been installed, and runtime tests have not yet been ru
 - Set repo-local Git identity so future commits in this repository default to `spreamming <fredspream@gmail.com>`.
 - Started Stage 0 foundation build: backend health now checks SQLite readiness, frontend displays API/database readiness, planned backend/frontend module directories were created, and README startup instructions were added.
 - Completed Stage 0 verification: installed backend/frontend dependencies, backend tests pass, frontend typecheck passes, frontend production build passes, and `GET /api/health` returned API/database `ok`.
+- Implemented Phase 1 MVP: stock search, daily K-line fetch/cache via AKShare, quote summary API, SQLite models for stocks and daily K-lines, frontend search box, stock detail page, and Lightweight Charts K-line/volume panel.
+- Verified Phase 1 live flow: search for `600519` returns 贵州茅台, K-line API returns cached daily bars, backend tests (4) pass, frontend typecheck/build pass.
+- Fixed stock detail "Failed to fetch": AKShare requests now bypass broken system proxy settings, backend returns clear 503 errors instead of crashing, frontend uses one K-line request (quote derived locally), Vite dev proxy added for `/api`, and error messages improved.
+- Updated frontend language requirement: all user-visible frontend text should be Simplified Chinese. Converted current frontend labels, buttons, placeholders, loading text, chart titles, and displayed error messages to Chinese; added the language rule to `market_watch_development_plan.md`.

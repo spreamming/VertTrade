@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.exc import SQLAlchemyError
 
+from .api.stock import router as stock_router
 from .config import get_settings
 from .database import check_database_connection, initialize_database
 
@@ -18,6 +19,8 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
+
+app.include_router(stock_router)
 
 app.add_middleware(
     CORSMiddleware,

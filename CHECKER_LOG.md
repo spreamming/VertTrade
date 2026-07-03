@@ -2,8 +2,8 @@
 
 This file is the independent verification record for agents. It compares what the build agent reported in `AGENT_LOG.md` against the actual repository state, the development plan, and runnable checks.
 
-**Last checked:** 2026-07-03  
-**Checker scope:** Stage 0 / Phase 0 foundation  
+**Last checked:** 2026-07-03 (second run)  
+**Checker scope:** Stage 0 (committed) + Phase 1 MVP (local, uncommitted)  
 **Reference docs:** `AGENT_LOG.md`, `market_watch_development_plan.md`, `README.md`
 
 ---
@@ -12,13 +12,14 @@ This file is the independent verification record for agents. It compares what th
 
 | Area | Verdict |
 |------|---------|
-| Plan alignment (Stage 0) | **PASS** |
-| Recent agent work quality | **GOOD** |
+| Stage 0 (committed) | **PASS** |
+| Phase 1 MVP (local work) | **PASS** |
+| Plan alignment | **PASS** |
 | Project boundary (no trading) | **PASS** |
-| Verification claims in agent log | **MOSTLY ACCURATE** |
+| Agent log accuracy | **PARTIALLY STALE** |
 | Git / repo hygiene | **NEEDS ATTENTION** |
 
-**Overall:** The recent agent completed Stage 0 foundation work correctly and stayed within plan scope. The main gap is that all Stage 0 changes are still uncommitted and unpushed. One section of `AGENT_LOG.md` is stale and contradicts the latest progress entry.
+**Overall:** Stage 0 is committed and pushed (`f8175f6 stage 0 built`). Phase 1 MVP work is implemented locally and verified, but it is **not yet committed or pushed**. The build agent's Phase 1 claims are substantiated by tests and live API checks. `AGENT_LOG.md` still has stale metadata in "Current Repository Progress".
 
 ---
 
@@ -28,61 +29,87 @@ This file is the independent verification record for agents. It compares what th
 
 Per `market_watch_development_plan.md`:
 
-- **Phase 0 (Project initialization):** target stage — foundation scaffold, backend/frontend startup, health endpoint.
-- **Phase 1 (Basic quotes and K-line MVP):** not started — correctly deferred.
+| Phase | Status |
+|-------|--------|
+| Phase 0 — Project initialization | **COMPLETE** (on remote) |
+| Phase 1 — Basic quotes and K-line MVP | **COMPLETE locally**, not committed |
+| Phase 2 — Watchlist and Dashboard | Not started — correct |
 
-Per `README.md` and `AGENT_LOG.md`:
+### Phase 1 acceptance criteria (Development Plan §8)
 
-- **Stage 0:** backend health + SQLite readiness, frontend readiness card, module directory scaffold.
-- **Next step:** fetch and cache the first daily K-line dataset (Phase 1 entry task).
-
-The recent agent work matches this position. No Phase 1 features (search, K-line, collectors, charts) were prematurely added.
-
----
-
-## What the Agent Reported (2026-07-03)
-
-From `AGENT_LOG.md` progress log:
-
-1. Started Stage 0 foundation build.
-2. Backend health checks SQLite readiness.
-3. Frontend displays API/database readiness.
-4. Planned backend/frontend module directories created.
-5. README startup instructions added.
-6. Completed Stage 0 verification: dependencies installed, backend tests pass, frontend typecheck passes, frontend production build passes, `GET /api/health` returned API/database `ok`.
+| Criterion | Status |
+|-----------|--------|
+| Enter stock code to open detail page | **PASS** — search + `StockDetail` flow |
+| Daily K-line chart visible | **PASS** — `KLineChart.tsx` with Lightweight Charts |
+| Volume visible | **PASS** — histogram series in chart |
+| K-line supports zoom, drag, crosshair | **PASS** — Lightweight Charts defaults |
+| Data cached to local SQLite | **PASS** — `KlineRepository`, live fetch returned bars |
 
 ---
 
-## Independent Verification (2026-07-03)
+## Git State (2026-07-03)
+
+| Item | Value |
+|------|-------|
+| Branch | `main` |
+| Latest pushed commit | `f8175f6` — `stage 0 built` |
+| Local ahead of remote | No (Stage 0 synced) |
+| Uncommitted Phase 1 work | **Yes** — 10 modified + 16 untracked files |
+
+### Uncommitted changes (Phase 1)
+
+**Modified:** `AGENT_LOG.md`, `README.md`, `backend/app/database.py`, `backend/app/main.py`, `backend/app/models/__init__.py`, `frontend/src/App.tsx`, `frontend/src/api/client.ts`, `frontend/src/styles.css`, `frontend/vite.config.ts`, `market_watch_development_plan.md`
+
+**New (untracked):** stock API, collectors, models, repos, schemas, service, utils, `test_stocks.py`, `KLineChart.tsx`, `SearchBox.tsx`, `StockDetail.tsx`, types, quote util
+
+---
+
+## What the Agent Reported (2026-07-03, latest entries)
+
+1. Implemented Phase 1 MVP: stock search, daily K-line fetch/cache via AKShare, quote summary API, SQLite models, frontend search, stock detail, Lightweight Charts K-line/volume panel.
+2. Verified Phase 1 live flow: search `600519` → 贵州茅台, K-line API returns cached daily bars, 4 backend tests pass, frontend typecheck/build pass.
+3. Fixed stock detail fetch failures: proxy bypass for AKShare, 503 errors instead of crashes, single K-line request with local quote derivation, Vite `/api` proxy, improved Chinese error messages.
+4. Converted frontend user-visible text to Simplified Chinese; added language rule to development plan.
+
+---
+
+## Independent Verification (2026-07-03, second run)
 
 ### Backend
 
 | Check | Expected | Result |
 |-------|----------|--------|
-| FastAPI app starts | Yes | **PASS** — `uvicorn backend.app.main:app` started; `/api/health` returned 200 |
-| Health payload | API + SQLite status | **PASS** — `{"status":"ok","app":"VertTrade","environment":"development","database":"ok"}` |
-| SQLite init on startup | Yes | **PASS** — `data/market_watch.db` created via lifespan hook |
-| CORS for Vite | Yes | **PASS** — origins include `127.0.0.1:5173` and `localhost:5173` |
-| Health test | Pass | **PASS** — `.venv/bin/python -m pytest backend/tests/test_health.py` → 1 passed |
-| Module scaffold | Planned dirs exist | **PASS** — `api/`, `collectors/`, `indicators/`, `models/`, `repositories/`, `schemas/`, `services/` with `__init__.py` |
+| All backend tests | 4 pass | **PASS** — `.venv/bin/python -m pytest backend/tests/` |
+| Health endpoint | ok + database | **PASS** |
+| Stock search API | Returns matches | **PASS** — live `GET /api/stocks/search?keyword=600519` → 贵州茅台 |
+| K-line API | Daily bars | **PASS** — live `GET /api/stocks/600519/kline` returned bars from 2025-07-03 onward |
+| Stock router mounted | Yes | **PASS** — `/api/stocks/search`, `/{code}/kline`, `/{code}/quote` |
+| AKShare collector | Present | **PASS** — `kline_collector.py`, `stock_basic_collector.py` |
+| Proxy bypass | Present | **PASS** — `backend/app/utils/network.py` |
+| SQLite models | stocks + kline_daily | **PASS** — `Stock`, `KlineDaily` registered via `initialize_database()` |
+| Error handling | 503 on network fail | **PASS** — `StockService.get_kline` raises HTTP 503 with Chinese detail |
 
 ### Frontend
 
 | Check | Expected | Result |
 |-------|----------|--------|
-| TypeScript check | Pass | **PASS** — `npx tsc --noEmit` exit 0 |
+| TypeScript check | Pass | **PASS** — `npx tsc --noEmit` |
 | Production build | Pass | **PASS** — `npm run build` succeeded |
-| Health client | Calls `/api/health` | **PASS** — `frontend/src/api/client.ts` |
-| Stage 0 UI | Readiness card | **PASS** — `frontend/src/App.tsx` shows API, SQLite, environment |
-| Placeholder dirs | Present | **PASS** — `components/`, `pages/`, `types/`, `utils/` with `.gitkeep` |
+| Search UI | Present | **PASS** — `SearchBox.tsx` |
+| Stock detail page | Present | **PASS** — `StockDetail.tsx` |
+| K-line chart | Lightweight Charts | **PASS** — candlestick + volume histogram |
+| Vite dev proxy | `/api` → :8000 | **PASS** — `vite.config.ts` |
+| API client uses relative paths | For proxy | **PASS** — `API_BASE_URL` defaults to `""` |
+| Simplified Chinese UI | Yes | **PASS** — labels, buttons, errors in Chinese |
+| Quote from single K-line fetch | Yes | **PASS** — `buildQuoteFromKline` in `StockDetail` |
 
-### Dependencies and environment
+### Dependencies
 
-| Check | Expected | Result |
-|-------|----------|--------|
-| Python venv | Installed | **PASS** — `.venv/` present with FastAPI, SQLAlchemy, pytest, etc. |
-| Frontend deps | Installed | **PASS** — `frontend/node_modules/` present |
-| Stack match | FastAPI + React/Vite + SQLite | **PASS** |
+| Package | Purpose | Status |
+|---------|---------|--------|
+| akshare | Data source | In `requirements.txt`, used in collectors |
+| lightweight-charts | K-line chart | In `frontend/package.json`, used |
+| echarts | Future charts | In `package.json`, **not yet used in src** |
 
 ### Project boundary
 
@@ -95,106 +122,70 @@ From `AGENT_LOG.md` progress log:
 
 ---
 
-## Phase 0 Acceptance Criteria (Development Plan §8)
-
-| Criterion | Status |
-|-----------|--------|
-| Backend can start | **PASS** |
-| Frontend can start | **PASS** (build verified; dev server not re-run in this check) |
-| Frontend can access a backend test endpoint | **PASS** |
-
-**Stage 0 is complete** against plan and README criteria.
-
----
-
 ## Issues and Gaps
 
 ### High priority
 
-1. **Uncommitted Stage 0 work**
-   - All foundation changes are local modifications/untracked files.
-   - Latest pushed commit remains `agent log created`; Stage 0 is not on remote.
-   - Affected paths include backend core files, frontend app/client, README, requirements, module scaffolds, and `AGENT_LOG.md`.
+1. **Phase 1 work uncommitted and unpushed**
+   - All MVP features exist only in the working tree.
+   - Remote remains at Stage 0 (`stage 0 built`).
+   - User should commit/push when ready (e.g. `phase 1 mvp built`).
 
 ### Medium priority
 
-2. **Stale text in `AGENT_LOG.md`**
-   - Section "Current Repository Progress" still says: "Dependencies have not yet been installed, and runtime tests have not yet been run."
-   - This contradicts the 2026-07-03 progress log entry claiming verification passed.
-   - Recommendation: update or remove the stale sentence.
+2. **Stale `AGENT_LOG.md` metadata**
+   - "Current Repository Progress" still says latest pushed commit is `agent log created`.
+   - Still says "Dependencies have not yet been installed, and runtime tests have not yet been run."
+   - Progress log entries are accurate; top section is not.
 
 3. **No pytest project config**
-   - Tests pass when run as `.venv/bin/python -m pytest backend/tests/test_health.py` from repo root.
-   - Plain `pytest` failed in one shell attempt (`ModuleNotFoundError: No module named 'backend'`).
-   - Recommendation: add `pytest.ini` or document the required command in README.
+   - Tests pass via `.venv/bin/python -m pytest backend/tests/` from repo root.
+   - Plain `pytest` may fail without PYTHONPATH/venv.
+
+4. **`README.md` not updated for Phase 1**
+   - Still describes Stage 0 as current stage; does not document stock search/K-line flow.
 
 ### Low priority
 
-4. **`.env.example` vs default config path**
-   - `.env.example`: `DATABASE_URL=sqlite:///./data/market_watch.db` (relative)
-   - `config.py` default: absolute path under project root
-   - Not blocking Stage 0, but could confuse env-based setup later.
+5. **`echarts` dependency unused** — added to `package.json` but no imports in `frontend/src/`.
 
-5. **Untracked build artifact**
-   - `frontend/tsconfig.tsbuildinfo` is untracked; consider adding to `.gitignore`.
+6. **`frontend/tsconfig.tsbuildinfo`** — still untracked; consider `.gitignore`.
 
-6. **Phase 1 not started**
-   - No AKShare collector, K-line model, or chart component yet.
-   - This is expected and correct for current stage.
+7. **`.env.example` vs `config.py` DB path** — relative vs absolute default (unchanged from Stage 0 check).
 
 ---
 
-## Files Verified Against Plan
+## Checker Verdict
 
-### Present and correct for Stage 0
+### Stage 0 (committed)
 
-- `backend/app/main.py` — health endpoint, CORS, DB init lifespan
-- `backend/app/config.py` — settings with SQLite default
-- `backend/app/database.py` — SQLAlchemy engine, init, connection check
-- `backend/tests/test_health.py` — health contract test
-- `backend/__init__.py` — package marker
-- `frontend/src/App.tsx` — Stage 0 readiness UI
-- `frontend/src/api/client.ts` — typed health fetch
-- `frontend/src/vite-env.d.ts` — Vite env typing
-- `README.md` — local setup and Stage 0 completion criteria
-- `.env.example` — app and API base URL vars
-- `requirements.txt` — FastAPI, SQLAlchemy, pandas, akshare, pytest, httpx2
+**Rating: PASS** — Previously verified and now on remote at `f8175f6`.
 
-### Correctly absent (not yet in scope)
-
-- `backend/app/collectors/*.py` (except empty package)
-- `backend/app/models/*.py` (except empty package)
-- `backend/app/api/stock.py`, `dashboard.py`, etc.
-- `frontend/src/components/KLineChart.tsx`
-- `frontend/src/pages/StockDetail.tsx`
-- Chart libraries (Lightweight Charts / ECharts) not yet added to frontend deps
-
----
-
-## Checker Verdict on Recent Agent Operation
+### Phase 1 MVP (local, uncommitted)
 
 **Rating: GOOD — on plan, verified locally**
 
-The recent agent:
+The build agent:
 
-- Correctly implemented Stage 0 / Phase 0 foundation.
-- Enhanced health check beyond a static response (SQLite readiness).
-- Connected frontend to backend with a clear readiness dashboard.
-- Created future module directories without over-building.
-- Preserved the personal-analysis-only boundary.
-- Updated `AGENT_LOG.md` with progress (but left one stale paragraph).
-- Did not commit or push (consistent with project git rules).
+- Implemented the planned Phase 1 scope (search, K-line, volume, quote, cache).
+- Used AKShare with proxy bypass and sensible error handling.
+- Added Lightweight Charts with crosshair/zoom/drag support.
+- Converted UI to Simplified Chinese per updated plan rule.
+- Added 3 stock API tests with mocked collectors (4 tests total).
+- Did not add trading, watchlist, or out-of-scope Phase 2+ features.
+- Did not commit Phase 1 (consistent with git rules unless user asks).
 
-The agent's verification claims are substantiated by this checker's independent runs, with the minor caveat that pytest should be invoked via the project venv from the repo root.
+Agent verification claims are **confirmed** by this checker's independent test and live API runs.
 
 ---
 
 ## Recommended Next Actions
 
-1. **User decision:** commit and push Stage 0 foundation when ready.
-2. **Build agent:** fix stale line in `AGENT_LOG.md` "Current Repository Progress".
-3. **Build agent:** add `pytest.ini` or README test command note.
-4. **Build agent:** begin Phase 1 — AKShare daily K-line fetch, SQLite storage, first chart.
+1. **User decision:** commit and push Phase 1 MVP when ready.
+2. **Build agent:** refresh `AGENT_LOG.md` "Current Repository Progress" (commit hash, stage, deps/tests status).
+3. **Build agent:** update `README.md` with Phase 1 usage (search, detail page, refresh).
+4. **Build agent:** add `pytest.ini` or document test command.
+5. **Build agent:** begin Phase 2 — watchlist CRUD and dashboard.
 
 ---
 
@@ -202,4 +193,5 @@ The agent's verification claims are substantiated by this checker's independent 
 
 | Date | Stage checked | Verdict | Notes |
 |------|---------------|---------|-------|
-| 2026-07-03 | Stage 0 / Phase 0 | PASS (with git hygiene gaps) | First checker run; foundation verified locally |
+| 2026-07-03 (1st) | Stage 0 / Phase 0 | PASS (git gaps) | Foundation verified; Stage 0 uncommitted at time |
+| 2026-07-03 (2nd) | Stage 0 + Phase 1 | PASS (Phase 1 uncommitted) | Stage 0 pushed; Phase 1 MVP verified locally, 4 tests pass, live AKShare flow works |

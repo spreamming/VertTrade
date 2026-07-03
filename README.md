@@ -46,13 +46,20 @@ VertTrade/
 
 ## Current Stage
 
-This repository is at the project foundation stage. The first implementation target is:
+Stage 0 is complete. Phase 1 (basic market data and daily K-line MVP) is now implemented.
 
-1. Start a FastAPI backend.
-2. Start a React frontend.
-3. Connect the frontend to a backend health-check endpoint.
-4. Fetch and store daily K-line data for one stock.
-5. Render the first K-line and volume chart.
+You can:
+
+1. Search A-share stocks by code or name.
+2. Open a stock detail page with latest quote summary.
+3. View daily K-line and volume charts with zoom, pan, and crosshair.
+4. Cache fetched K-line data in local SQLite.
+
+Next target:
+
+1. Watchlist management.
+2. Dashboard with indices and watchlist summary.
+3. Price-position / top-bottom zone indicator.
 
 ## Stage 0 Local Setup
 

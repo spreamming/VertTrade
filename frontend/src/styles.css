@@ -90,3 +90,165 @@ p {
   font-size: 18px;
   line-height: 1.7;
 }
+
+.search-box,
+.stock-detail,
+.chart-panel {
+  max-width: 1100px;
+}
+
+.search-box label {
+  display: block;
+  margin-bottom: 8px;
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.search-box input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px 16px;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  background: #1f2937;
+  color: #f8fafc;
+  font-size: 16px;
+}
+
+.search-box input:focus {
+  outline: 2px solid #38bdf8;
+  border-color: #38bdf8;
+}
+
+.search-meta,
+.loading-text {
+  margin: 12px 0 0;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.search-error {
+  margin: 12px 0 0;
+  color: #f87171;
+  font-size: 14px;
+}
+
+.search-results {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.search-results button {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 0;
+  border-bottom: 1px solid #334155;
+  background: #1f2937;
+  color: #e5e7eb;
+  text-align: left;
+  cursor: pointer;
+}
+
+.search-results li:last-child button {
+  border-bottom: 0;
+}
+
+.search-results button:hover {
+  background: #334155;
+}
+
+.search-results button span:last-child {
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.stock-detail {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 32px 48px 48px;
+}
+
+.stock-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.back-button,
+.refresh-button {
+  padding: 10px 16px;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  background: #1f2937;
+  color: #e5e7eb;
+  cursor: pointer;
+}
+
+.back-button:hover,
+.refresh-button:hover {
+  background: #334155;
+}
+
+.refresh-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.quote-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.quote-grid div {
+  padding: 16px;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  background: #1f2937;
+}
+
+.quote-grid dt {
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.quote-grid dd {
+  margin: 8px 0 0;
+  color: #f8fafc;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.quote-up {
+  color: #ef4444;
+}
+
+.quote-down {
+  color: #22c55e;
+}
+
+.chart-panel {
+  padding: 20px;
+  border: 1px solid #334155;
+  border-radius: 16px;
+  background: #1f2937;
+}
+
+.kline-chart {
+  width: 100%;
+  height: 520px;
+}
