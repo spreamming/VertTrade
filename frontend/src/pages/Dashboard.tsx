@@ -4,21 +4,29 @@ import {
   addWatchlistItem,
   deleteWatchlistItem,
   getDashboard,
+  getIndustrySectors,
   type DashboardResponse,
+  type SectorSummary,
   type StockSummary,
 } from "../api/client";
 import { SearchBox } from "../components/SearchBox";
+import { SectorPanel } from "../components/SectorPanel";
 import { WatchlistTable } from "../components/WatchlistTable";
 
 type DashboardProps = {
   onOpenStock: (stock: StockSummary) => void;
+  onOpenSector: (sector: SectorSummary) => void;
 };
 
-export function Dashboard({ onOpenStock }: DashboardProps) {
+export function Dashboard({ onOpenStock, onOpenSector }: DashboardProps) {
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
+  const [sectors, setSectors] = useState<SectorSummary[]>([]);
+  const [sectorSource, setSectorSource] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sectorsLoading, setSectorsLoading] = useState(true);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sectorsError, setSectorsError] = useState<string | null>(null);
 
   const loadDashboard = useCallback(async () => {
     setLoading(true);
@@ -33,9 +41,26 @@ export function Dashboard({ onOpenStock }: DashboardProps) {
     }
   }, []);
 
+  const loadSectors = useCallback(async () => {
+    setSectorsLoading(true);
+    setSectorsError(null);
+
+    try {
+      const response = await getIndustrySectors();
+      setSectors(response.sectors);
+      setSectorSource(response.source);
+    } catch (err: unknown) {
+      setSectorsError(err instanceof Error ? err.message : "加载行业板块失败");
+      setSectorSource(null);
+    } finally {
+      setSectorsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     void loadDashboard();
-  }, [loadDashboard]);
+    void loadSectors();
+  }, [loadDashboard, loadSectors]);
 
   async function handleAddWatchlist(stock: StockSummary) {
     setActionMessage(null);
@@ -69,8 +94,8 @@ export function Dashboard({ onOpenStock }: DashboardProps) {
         <p className="eyebrow">个人 A 股看盘工具</p>
         <h1>VertTrade</h1>
         <p>
-          首页用于维护自选股，并快速查看自选股的最新行情摘要。
-          后续会继续加入主要指数、市场概览和板块资金流。
+          首页用于维护自选股，并快速查看自选股、行业板块和资金流观察维度。
+          后续会继续加入主要指数、市场概览和复盘页面。
         </p>
       </section>
 
@@ -111,6 +136,15 @@ export function Dashboard({ onOpenStock }: DashboardProps) {
           onDelete={handleDeleteWatchlist}
         />
       </section>
+
+      <SectorPanel
+        sectors={sectors}
+        loading={sectorsLoading}
+        error={sectorsError}
+        source={sectorSource}
+        onRefresh={loadSectors}
+        onOpenSector={onOpenSector}
+      />
 
       <section className="status-card wide-card">
         <h2>市场概览</h2>

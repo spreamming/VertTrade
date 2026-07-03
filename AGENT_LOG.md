@@ -55,7 +55,7 @@ Older pushed commits before `dd0b997` may still contain Cursor co-author trailer
 - GitHub repo: `https://github.com/spreamming/VertTrade.git`
 - Local branch: `main`
 - Remote: `origin`
-- Latest pushed commit on `main`: `d9a3c3d stage 3`
+- Latest pushed commit on `main`: `d021b16 stage 4`
 - Correct Git identity for commits: `spreamming <fredspream@gmail.com>`
 - Repo-local Git identity is configured in `.git/config` so future commits in this repo use the correct author.
 
@@ -80,7 +80,7 @@ Initial scaffold already created:
 
 Dependencies have been installed locally.
 
-Stage 0, Phase 1, Phase 2, and Phase 3 are complete and pushed. Phase 4 individual stock main money-flow MVP is implemented locally, not yet committed or pushed.
+Stage 0 through Phase 4 are complete and pushed. Phase 5 industry sector MVP is implemented locally and ready to commit as stage 5.
 
 Current verification commands have passed:
 
@@ -141,3 +141,6 @@ Current verification commands have passed:
 - Adjusted Phase 4 frontend chart layout: main money-flow bars now render inside the K-line chart under volume on the same time axis; the standalone money-flow chart panel was removed. Frontend typecheck/build pass.
 - Applied Phase 4 checker suggestions: stock detail now loads core quote/K-line/position separately from optional money-flow, so money-flow failures show a local warning instead of blocking the page; money-flow collector validates required AKShare columns; proxy bypass was strengthened for requests; backend tests now 27 pass and frontend typecheck/build pass. Live money-flow check: `000001` SZ succeeds, `600519` SH still returns an upstream connection close handled by the API.
 - Localized K-line chart date labels: the bottom time axis and crosshair date formatter now display Chinese date text. Frontend typecheck/build pass.
+- Implemented Phase 5 industry sector MVP: added AKShare industry sector collector with field validation, `/api/sectors/industries`, `/api/sectors/industries/{code}`, Dashboard industry sector table, sector detail page with constituents, and click-through from constituents to stock detail. Backend tests now 30 pass; frontend typecheck/build pass. Live sector data source currently returns upstream connection close and is handled by API as a Chinese 503 error.
+- Fixed industry sector data-source availability: added 同花顺 sector summary fallback when 东方财富 industry list fails, mapped fallback amount/main-net-inflow fields, and changed sector constituent lookup to prefer sector name over provider-specific code. Live `/api/sectors/industries` now returns 200 with 90 sectors; backend tests now 31 pass and frontend typecheck/build pass.
+- Applied Phase 5 checker suggestions: sector list/detail responses now carry accurate `source` metadata, sector detail tries name/code and has a 同花顺 constituent fallback, and the frontend shows source labels plus an empty constituent state. Live sector detail smoke test now returns 200 with constituents; backend tests now 33 pass and frontend typecheck/build pass.

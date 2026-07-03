@@ -2,125 +2,140 @@
 
 This file summarizes the latest checker process and gives focused suggestions for the next builder agent. It should be overwritten after every future checker run.
 
-**Last checker run:** 2026-07-03 (fifth run)  
-**Scope checked:** Phase 4 individual stock main money-flow MVP  
+**Last checker run:** 2026-07-03 (sixth run)  
+**Scope checked:** Phase 5 industry sector MVP  
 **Source report:** `CHECKER_LOG.md`
 
 ---
 
 ## Checker Summary
 
-The checker verified the Phase 4 money-flow MVP.
+The checker verified the Phase 5 industry sector MVP.
 
-Result: **PASS with one important risk**.
+Result: **PASS with one important data-source gap**.
 
 Verified behavior:
 
-- Backend tests pass: 26/26.
+- Backend tests pass: 31/31.
 - Frontend typecheck passes.
 - Frontend production build passes.
-- Money-flow backend model, repository, collector, cache, and API are present.
-- Watchlist summary includes latest main net inflow and main net ratio.
-- Stock detail includes money-flow summary.
-- K-line chart now includes main money-flow bars under volume on the same time axis.
-- UI text explains the data source口径 and avoids trading-signal language.
+- Industry sector list API is mounted and works.
+- Dashboard displays an industry sector panel.
+- Sector detail page exists and supports constituent click-through to stock detail.
+- Collector validates required provider columns.
+- Eastmoney sector list has a Tonghuashun fallback.
+- Chinese UI is maintained.
 - No trading, brokerage, account, order, or credential functionality was introduced.
 
 Live data-source check:
 
-- `/api/stocks/600519/moneyflow` returned a handled `503` response.
-- This means the app did not crash, but live AKShare/Eastmoney money-flow data was unavailable during the check.
+- `/api/sectors/industries` returned 200 and sector rows.
+- `/api/sectors/industries/BK1408?name=机器人` returned a handled 503 for constituents.
+
+The sector list workflow is usable live. The sector detail constituent workflow is still provider-fragile.
 
 ---
 
 ## Builder Fix Suggestions
 
-### 1. Make money-flow failure non-blocking on stock detail
+### 1. Stabilize sector constituent detail
 
-Current risk:
+Current issue:
 
-- `StockDetail` loads K-line, position, and money-flow in one flow.
-- If money-flow returns `503`, the page-level catch path prevents available quote/K-line/position data from being set.
-- A temporary money-flow failure can therefore make the whole stock detail page look broken.
-
-Suggested fix:
-
-- Load core stock detail data first: K-line, quote, and price position.
-- Load money-flow separately.
-- If money-flow fails, keep K-line and position visible and show a local money-flow warning near the money-flow panel.
-- Do not use one page-level error for optional money-flow data.
-
-### 2. Verify the live AKShare money-flow source
-
-The tests use mocked money-flow data and pass. The live source returned `503`.
-
-Suggested checks:
-
-- Confirm `ak.stock_individual_fund_flow(stock=code, market=market)` still works with current AKShare.
-- Confirm `market` should be `sh` / `sz` for the target endpoint.
-- Log or inspect missing/changed upstream fields during local debugging.
-- Keep the user-facing backend error in Chinese and non-technical.
-
-### 3. Add defensive collector validation
-
-`moneyflow_collector.py` assumes specific Chinese AKShare column names.
+- Sector list works live.
+- Sector detail returns `503` for a live sector constituent request.
+- The frontend shows an error, but the core Phase 5 detail workflow is not reliable yet.
 
 Suggested fix:
 
-- Define a required-column list before renaming.
-- If required columns are absent, raise a clear data-source error.
-- Include enough internal detail for debugging, but do not expose noisy raw provider errors directly to the frontend.
+- Re-check `ak.stock_board_industry_cons_em(symbol=...)` input requirements.
+- Try both sector name and sector code when fetching constituents.
+- If Eastmoney detail remains unstable, look for a Tonghuashun constituent fallback to match the sector-list fallback.
+- Keep the current Chinese 503 message, but add internal debug detail during local development.
 
-### 4. Keep money-flow cache behavior explicit
+### 2. Return accurate data-source metadata
 
-The cache refresh behavior is currently basic.
+Current issue:
+
+- `SectorListResponse.source` defaults to `akshare_em`.
+- If the Tonghuashun fallback supplies sector rows, the response can still report the Eastmoney source.
 
 Suggested fix:
 
-- Decide whether money-flow should refresh once per day, on manual refresh, or whenever cached data is stale by date.
-- Be careful with weekends and market holidays.
-- Keep cached data visible if a refresh fails.
+- Have the collector return both the normalized frame and a source identifier.
+- Use values like `akshare_em` and `akshare_ths`.
+- Surface this source in `SectorListResponse` and, if useful, in the Dashboard sector panel.
 
-### 5. Preserve the current chart direction
+### 3. Add an empty-state for sector detail
 
-The current UI direction is good:
+Current issue:
 
-- K-line, volume, and main money-flow bars share one time axis.
-- Money-flow summary stays as a separate explanation/summary panel.
+- If sector detail succeeds but returns zero constituents, the page has no clear empty-state text.
 
-Keep this layout unless the user asks for a separate money-flow chart again.
+Suggested fix:
 
-### 6. Keep wording conservative
+- In `SectorDetail`, show a Chinese message such as `暂无成分股数据。`
+- Keep this separate from the error state so users can distinguish empty data from provider failure.
+
+### 4. Consider lightweight sector caching
+
+Current issue:
+
+- Sector list and constituents are live-provider dependent.
+- Dashboard sector panel can fail whenever the upstream source is slow or unavailable.
+
+Suggested fix:
+
+- Add a short-lived local cache for sector list first.
+- Keep stale sector list visible when refresh fails.
+- Defer full historical sector storage until the sector workflow stabilizes.
+
+### 5. Keep Phase 5 scope focused
+
+Do not expand too far before stabilizing the current sector workflow.
+
+Good next work:
+
+- Reliable sector list.
+- Reliable sector constituents.
+- Click-through to stock detail.
+- Clear provider/source labeling.
+
+Defer:
+
+- Full sector K-line history.
+- Historical sector money-flow chart.
+- Sector rankings page.
+- Complex review workflows.
+
+### 6. Keep wording observational
 
 Continue using:
 
-- 主力资金流
-- 主力净流入
-- 主力净占比
+- 行业板块
+- 成分股
+- 板块强弱
+- 资金流观察
 - 数据来源 / 数据口径
-- 观察维度
 
-Avoid:
+Avoid wording that turns sector information into trading instructions:
 
 - 买入
 - 卖出
-- 交易信号
 - 建仓
 - 清仓
-- 主力真实动向
-
-Money-flow should remain an observation feature, not a trading instruction.
+- 交易信号
 
 ---
 
 ## Suggested Next Build Direction
 
-Best next technical step: improve money-flow resilience before expanding to sector/ranking features.
+Best next technical step: make sector detail as reliable as sector list.
 
 Recommended order:
 
-1. Decouple money-flow loading from stock detail core data.
-2. Add collector column validation and clearer data-source error handling.
-3. Confirm live AKShare money-flow behavior with at least one Shanghai and one Shenzhen stock.
-4. Add tests for money-flow failure fallback on stock detail/watchlist behavior where practical.
-5. Then continue toward sector money-flow or money-flow rankings.
+1. Fix or add fallback for sector constituent fetch.
+2. Return accurate sector data-source metadata.
+3. Add sector detail empty-state UI.
+4. Add tests for fallback source labeling and empty constituents.
+5. Then continue toward sector money-flow history or rankings.

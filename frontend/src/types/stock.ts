@@ -70,6 +70,48 @@ export type MoneyflowResponse = {
   bars: MoneyflowBar[];
 };
 
+export type SectorSummary = {
+  code: string;
+  name: string;
+  latest_price?: number | null;
+  change_amount?: number | null;
+  change_percent?: number | null;
+  amount?: number | null;
+  main_net_inflow?: number | null;
+  market_value?: number | null;
+  turnover_rate?: number | null;
+  rising_count?: number | null;
+  falling_count?: number | null;
+  leading_stock?: string | null;
+  leading_stock_change_percent?: number | null;
+};
+
+export type SectorConstituent = {
+  code: string;
+  name: string;
+  exchange: string;
+  latest_price?: number | null;
+  change_amount?: number | null;
+  change_percent?: number | null;
+  volume?: number | null;
+  amount?: number | null;
+  turnover_rate?: number | null;
+  pe_dynamic?: number | null;
+  pb?: number | null;
+};
+
+export type SectorListResponse = {
+  sectors: SectorSummary[];
+  source: string;
+};
+
+export type SectorDetailResponse = {
+  code: string;
+  name: string;
+  constituents: SectorConstituent[];
+  source: string;
+};
+
 export type WatchlistItem = {
   id: number;
   code: string;

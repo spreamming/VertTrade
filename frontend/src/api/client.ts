@@ -2,6 +2,9 @@ import type {
   DashboardResponse,
   KlineResponse,
   MoneyflowResponse,
+  SectorDetailResponse,
+  SectorListResponse,
+  SectorSummary,
   StockPosition,
   StockQuote,
   StockSummary,
@@ -21,6 +24,9 @@ export type {
   DashboardResponse,
   KlineResponse,
   MoneyflowResponse,
+  SectorDetailResponse,
+  SectorListResponse,
+  SectorSummary,
   StockPosition,
   StockQuote,
   StockSummary,
@@ -137,6 +143,19 @@ export async function getStockMoneyflow(
 
 export async function getDashboard(): Promise<DashboardResponse> {
   return request<DashboardResponse>("/api/dashboard");
+}
+
+export async function getIndustrySectors(): Promise<SectorListResponse> {
+  return request<SectorListResponse>("/api/sectors/industries");
+}
+
+export async function getIndustrySector(
+  sector: SectorSummary,
+): Promise<SectorDetailResponse> {
+  const params = new URLSearchParams({ name: sector.name });
+  return request<SectorDetailResponse>(
+    `/api/sectors/industries/${sector.code}?${params.toString()}`,
+  );
 }
 
 export async function getWatchlist(): Promise<WatchlistItem[]> {
