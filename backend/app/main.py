@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.exc import SQLAlchemyError
 
+from .api.ranking import router as ranking_router
 from .api.sector import router as sector_router
 from .api.stock import router as stock_router
 from .api.watchlist import router as watchlist_router
@@ -22,6 +23,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
+app.include_router(ranking_router)
 app.include_router(sector_router)
 app.include_router(stock_router)
 app.include_router(watchlist_router)

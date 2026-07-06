@@ -1,7 +1,10 @@
 import type {
   DashboardResponse,
+  DailyReviewResponse,
   KlineResponse,
   MoneyflowResponse,
+  RankingGroup,
+  RankingItem,
   SectorDetailResponse,
   SectorListResponse,
   SectorSummary,
@@ -22,8 +25,11 @@ export type HealthResponse = {
 
 export type {
   DashboardResponse,
+  DailyReviewResponse,
   KlineResponse,
   MoneyflowResponse,
+  RankingGroup,
+  RankingItem,
   SectorDetailResponse,
   SectorListResponse,
   SectorSummary,
@@ -143,6 +149,10 @@ export async function getStockMoneyflow(
 
 export async function getDashboard(): Promise<DashboardResponse> {
   return request<DashboardResponse>("/api/dashboard");
+}
+
+export async function getDailyReview(): Promise<DailyReviewResponse> {
+  return request<DailyReviewResponse>("/api/rankings/daily-review");
 }
 
 export async function getIndustrySectors(): Promise<SectorListResponse> {

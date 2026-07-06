@@ -55,7 +55,7 @@ Older pushed commits before `dd0b997` may still contain Cursor co-author trailer
 - GitHub repo: `https://github.com/spreamming/VertTrade.git`
 - Local branch: `main`
 - Remote: `origin`
-- Latest pushed commit on `main`: `d021b16 stage 4`
+- Latest pushed commit on `main`: `5974030 stage 5`
 - Correct Git identity for commits: `spreamming <fredspream@gmail.com>`
 - Repo-local Git identity is configured in `.git/config` so future commits in this repo use the correct author.
 
@@ -80,7 +80,7 @@ Initial scaffold already created:
 
 Dependencies have been installed locally.
 
-Stage 0 through Phase 4 are complete and pushed. Phase 5 industry sector MVP is implemented locally and ready to commit as stage 5.
+Stage 0 through Phase 5 are complete and pushed. Phase 6 daily review / ranking MVP is ready to commit as stage 6.
 
 Current verification commands have passed:
 
@@ -144,3 +144,8 @@ Current verification commands have passed:
 - Implemented Phase 5 industry sector MVP: added AKShare industry sector collector with field validation, `/api/sectors/industries`, `/api/sectors/industries/{code}`, Dashboard industry sector table, sector detail page with constituents, and click-through from constituents to stock detail. Backend tests now 30 pass; frontend typecheck/build pass. Live sector data source currently returns upstream connection close and is handled by API as a Chinese 503 error.
 - Fixed industry sector data-source availability: added 同花顺 sector summary fallback when 东方财富 industry list fails, mapped fallback amount/main-net-inflow fields, and changed sector constituent lookup to prefer sector name over provider-specific code. Live `/api/sectors/industries` now returns 200 with 90 sectors; backend tests now 31 pass and frontend typecheck/build pass.
 - Applied Phase 5 checker suggestions: sector list/detail responses now carry accurate `source` metadata, sector detail tries name/code and has a 同花顺 constituent fallback, and the frontend shows source labels plus an empty constituent state. Live sector detail smoke test now returns 200 with constituents; backend tests now 33 pass and frontend typecheck/build pass.
+- Committed and pushed `5974030 stage 5` without any `Co-authored-by` trailer (recreated via `commit-tree` after Cursor injected co-author on first attempt). Verified 33 backend tests, frontend typecheck, and push to `origin/main`.
+- Implemented Phase 6 MVP: added `/api/rankings/daily-review`, ranking schemas/service/collector with per-group fallback handling, Dashboard daily review/ranking panel, sector gainers and sector money-flow rankings from 同花顺 industry summary. Backend tests now 35 pass; frontend typecheck/build pass. Live daily review returns 200 with sector ranking groups; all-market stock ranking sources remain unstable and are hidden by default unless `include_stock=true`.
+- Cleaned Phase 6 default Dashboard UX: default daily review now returns only `sector_gainers` and `sector_moneyflow`, so six unstable all-market stock ranking error cards no longer appear. Backend tests now 36 pass; frontend typecheck/build pass.
+- Reworked Phase 6 ranking stability after user feedback: default daily review again includes all 8 ranking groups. Stock行情榜 now uses lightweight direct Eastmoney top-list requests with Tonghuashun page fallback; stock money-flow rankings use Eastmoney direct flow lists with Tonghuashun flow fallback. Live smoke now returns items for all stock, money-flow, and sector ranking groups; backend tests now 37 pass and frontend typecheck/build pass.
+- Applied Phase 6 checker suggestions: formatted/simplified `ranking_service.py`, added a 60-second daily-review response cache that only stores fully populated responses, and keeps source failures isolated per ranking group. Live smoke returns 8/8 groups with data and second request hits cache; backend tests now 38 pass and frontend typecheck/build pass.

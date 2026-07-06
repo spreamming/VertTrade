@@ -46,7 +46,7 @@ VertTrade/
 
 ## Current Stage
 
-Stage 0 through Phase 4 are complete. Phase 5 (industry sector MVP) is now implemented locally.
+Stage 0 through Phase 5 are complete. Phase 6 (daily review and ranking MVP) is now implemented locally.
 
 You can:
 
@@ -64,10 +64,12 @@ You can:
 12. View industry sector summaries on the Dashboard.
 13. Open an industry sector detail page and inspect constituent stocks.
 14. Jump from a sector constituent directly into the stock detail page.
+15. View a daily review panel with stock and sector rankings.
+16. See stock ranking fallbacks through direct Eastmoney requests and Tonghuashun pages when provider APIs are unstable.
 
 Next target:
 
-1. Sector money-flow charts and ranking pages.
+1. Add sector money-flow charts and ranking detail pages.
 2. Major index and market overview data for the Dashboard.
 3. Broader price-position support for indices and additional windows in the UI.
 

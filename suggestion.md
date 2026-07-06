@@ -2,123 +2,115 @@
 
 This file summarizes the latest checker process and gives focused suggestions for the next builder agent. It should be overwritten after every future checker run.
 
-**Last checker run:** 2026-07-03 (sixth run)  
-**Scope checked:** Phase 5 industry sector MVP  
+**Last checker run:** 2026-07-03 (seventh run)  
+**Current stage checked:** Phase 6 daily review / ranking MVP  
 **Source report:** `CHECKER_LOG.md`
 
 ---
 
 ## Checker Summary
 
-The checker verified the Phase 5 industry sector MVP.
+The checker verified the current local stage: Phase 6 daily review / rankings.
 
-Result: **PASS with one important data-source gap**.
+Result: **PASS**.
 
 Verified behavior:
 
-- Backend tests pass: 31/31.
+- Backend tests pass: 37/37.
 - Frontend typecheck passes.
 - Frontend production build passes.
-- Industry sector list API is mounted and works.
-- Dashboard displays an industry sector panel.
-- Sector detail page exists and supports constituent click-through to stock detail.
-- Collector validates required provider columns.
-- Eastmoney sector list has a Tonghuashun fallback.
-- Chinese UI is maintained.
-- No trading, brokerage, account, order, or credential functionality was introduced.
+- `/api/rankings/daily-review?limit=5` returns 200.
+- Live daily review returns all 8 ranking groups.
+- Each ranking group has live items and no error in the smoke check.
+- Dashboard shows the daily review / ranking panel.
+- Per-group source labels and error/empty states are implemented.
+- Project remains a personal market observation app, not a trading platform.
 
-Live data-source check:
+Live ranking groups verified:
 
-- `/api/sectors/industries` returned 200 and sector rows.
-- `/api/sectors/industries/BK1408?name=机器人` returned a handled 503 for constituents.
-
-The sector list workflow is usable live. The sector detail constituent workflow is still provider-fragile.
+- 个股涨幅榜
+- 个股跌幅榜
+- 成交额榜
+- 换手率榜
+- 个股主力净流入榜
+- 个股主力净流出榜
+- 板块涨幅榜
+- 板块资金流榜
 
 ---
 
 ## Builder Fix Suggestions
 
-### 1. Stabilize sector constituent detail
+### 1. Keep provider failure isolation
 
-Current issue:
+The current design is good: a single failed ranking source should only affect its own group.
 
-- Sector list works live.
-- Sector detail returns `503` for a live sector constituent request.
-- The frontend shows an error, but the core Phase 5 detail workflow is not reliable yet.
+Preserve this behavior when modifying ranking code:
 
-Suggested fix:
+- Do not let one failed stock source break sector rankings.
+- Do not let one failed money-flow source break price/amount/turnover rankings.
+- Keep group-level Chinese error messages.
+- Keep the summary note showing how many ranking groups are available.
 
-- Re-check `ak.stock_board_industry_cons_em(symbol=...)` input requirements.
-- Try both sector name and sector code when fetching constituents.
-- If Eastmoney detail remains unstable, look for a Tonghuashun constituent fallback to match the sector-list fallback.
-- Keep the current Chinese 503 message, but add internal debug detail during local development.
+### 2. Format `ranking_service.py`
 
-### 2. Return accurate data-source metadata
-
-Current issue:
-
-- `SectorListResponse.source` defaults to `akshare_em`.
-- If the Tonghuashun fallback supplies sector rows, the response can still report the Eastmoney source.
+`backend/app/services/ranking_service.py` runs correctly, but the sector group construction has awkward indentation.
 
 Suggested fix:
 
-- Have the collector return both the normalized frame and a source identifier.
-- Use values like `akshare_em` and `akshare_ths`.
-- Surface this source in `SectorListResponse` and, if useful, in the Dashboard sector panel.
+- Run a formatting pass or manually align the list entries.
+- Keep the logic unchanged unless tests require a behavior change.
+- Add or keep tests around all 8 ranking groups after formatting.
 
-### 3. Add an empty-state for sector detail
+### 3. Consider lightweight daily-review caching
 
-Current issue:
+Live ranking data depends on external providers. The latest smoke test passed, but provider stability has been a recurring issue.
 
-- If sector detail succeeds but returns zero constituents, the page has no clear empty-state text.
+Suggested approach:
 
-Suggested fix:
+- Add a short-lived cache for the daily review response.
+- Keep the last successful response visible if refresh fails.
+- Make cache age visible in the UI later if needed.
+- Do not add historical ranking storage yet unless the user asks for daily snapshots.
 
-- In `SectorDetail`, show a Chinese message such as `暂无成分股数据。`
-- Keep this separate from the error state so users can distinguish empty data from provider failure.
+### 4. Improve Dashboard usability before adding more panels
 
-### 4. Consider lightweight sector caching
+Dashboard now includes:
 
-Current issue:
+- Add watchlist
+- Watchlist table
+- Daily review / rankings
+- Industry sector table
+- Market notes
 
-- Sector list and constituents are live-provider dependent.
-- Dashboard sector panel can fail whenever the upstream source is slow or unavailable.
+Suggested UI direction:
 
-Suggested fix:
+- Keep section ordering clear: watchlist first, daily review second, sectors third.
+- Consider collapsible sections or tabs later if the page becomes too long.
+- Avoid adding more large panels until the current Dashboard remains easy to scan.
 
-- Add a short-lived local cache for sector list first.
-- Keep stale sector list visible when refresh fails.
-- Defer full historical sector storage until the sector workflow stabilizes.
+### 5. Consider click-through from rankings later
 
-### 5. Keep Phase 5 scope focused
+Ranking cards are currently read-only.
 
-Do not expand too far before stabilizing the current sector workflow.
+Possible enhancement:
 
-Good next work:
+- Stock ranking items could open `StockDetail`.
+- Sector ranking items could open `SectorDetail`.
 
-- Reliable sector list.
-- Reliable sector constituents.
-- Click-through to stock detail.
-- Clear provider/source labeling.
-
-Defer:
-
-- Full sector K-line history.
-- Historical sector money-flow chart.
-- Sector rankings page.
-- Complex review workflows.
+This is useful, but not required to accept the current Phase 6 MVP.
 
 ### 6. Keep wording observational
 
 Continue using:
 
-- 行业板块
-- 成分股
-- 板块强弱
-- 资金流观察
-- 数据来源 / 数据口径
+- 每日复盘
+- 排行榜
+- 市场强弱
+- 资金方向
+- 观察维度
 
-Avoid wording that turns sector information into trading instructions:
+Avoid:
 
 - 买入
 - 卖出
@@ -126,16 +118,18 @@ Avoid wording that turns sector information into trading instructions:
 - 清仓
 - 交易信号
 
+Rankings should support market review, not trading instructions.
+
 ---
 
 ## Suggested Next Build Direction
 
-Best next technical step: make sector detail as reliable as sector list.
+Best next technical step: stabilize and polish the daily review experience before expanding into new stages.
 
 Recommended order:
 
-1. Fix or add fallback for sector constituent fetch.
-2. Return accurate sector data-source metadata.
-3. Add sector detail empty-state UI.
-4. Add tests for fallback source labeling and empty constituents.
-5. Then continue toward sector money-flow history or rankings.
+1. Format and simplify `ranking_service.py`.
+2. Add lightweight daily-review response caching.
+3. Keep last successful ranking data visible on refresh failure.
+4. Consider click-through from ranking rows to stock/sector detail.
+5. Then move toward broader review workflow or realtime watch features.

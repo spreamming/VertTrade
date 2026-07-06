@@ -496,6 +496,85 @@ p {
   color: #94a3b8;
 }
 
+.ranking-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.ranking-card {
+  padding: 16px;
+  border: 1px solid #334155;
+  border-radius: 14px;
+  background: #111827;
+}
+
+.ranking-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.ranking-card h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.source-chip {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.12);
+  color: #7dd3fc;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ranking-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ranking-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.rank-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #1f2937;
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.ranking-list strong,
+.ranking-list small {
+  display: block;
+}
+
+.ranking-list small {
+  margin-top: 2px;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.rank-metric {
+  text-align: right;
+}
+
 .danger-button {
   padding: 8px 12px;
   border: 1px solid #7f1d1d;

@@ -112,6 +112,31 @@ export type SectorDetailResponse = {
   source: string;
 };
 
+export type RankingItem = {
+  code?: string | null;
+  name: string;
+  exchange?: string | null;
+  latest_price?: number | null;
+  change_percent?: number | null;
+  amount?: number | null;
+  turnover_rate?: number | null;
+  main_net_inflow?: number | null;
+  leading_stock?: string | null;
+};
+
+export type RankingGroup = {
+  key: string;
+  title: string;
+  source?: string | null;
+  items: RankingItem[];
+  error?: string | null;
+};
+
+export type DailyReviewResponse = {
+  groups: RankingGroup[];
+  notes: string[];
+};
+
 export type WatchlistItem = {
   id: number;
   code: string;

@@ -4,13 +4,16 @@ import {
   addWatchlistItem,
   deleteWatchlistItem,
   getDashboard,
+  getDailyReview,
   getIndustrySectors,
   type DashboardResponse,
+  type DailyReviewResponse,
   type SectorSummary,
   type StockSummary,
 } from "../api/client";
 import { SearchBox } from "../components/SearchBox";
 import { SectorPanel } from "../components/SectorPanel";
+import { RankingPanel } from "../components/RankingPanel";
 import { WatchlistTable } from "../components/WatchlistTable";
 
 type DashboardProps = {
@@ -20,12 +23,15 @@ type DashboardProps = {
 
 export function Dashboard({ onOpenStock, onOpenSector }: DashboardProps) {
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
+  const [dailyReview, setDailyReview] = useState<DailyReviewResponse | null>(null);
   const [sectors, setSectors] = useState<SectorSummary[]>([]);
   const [sectorSource, setSectorSource] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reviewLoading, setReviewLoading] = useState(true);
   const [sectorsLoading, setSectorsLoading] = useState(true);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
   const [sectorsError, setSectorsError] = useState<string | null>(null);
 
   const loadDashboard = useCallback(async () => {
@@ -38,6 +44,19 @@ export function Dashboard({ onOpenStock, onOpenSector }: DashboardProps) {
       setError(err instanceof Error ? err.message : "加载首页数据失败");
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  const loadDailyReview = useCallback(async () => {
+    setReviewLoading(true);
+    setReviewError(null);
+
+    try {
+      setDailyReview(await getDailyReview());
+    } catch (err: unknown) {
+      setReviewError(err instanceof Error ? err.message : "加载排行榜失败");
+    } finally {
+      setReviewLoading(false);
     }
   }, []);
 
@@ -59,8 +78,9 @@ export function Dashboard({ onOpenStock, onOpenSector }: DashboardProps) {
 
   useEffect(() => {
     void loadDashboard();
+    void loadDailyReview();
     void loadSectors();
-  }, [loadDashboard, loadSectors]);
+  }, [loadDashboard, loadDailyReview, loadSectors]);
 
   async function handleAddWatchlist(stock: StockSummary) {
     setActionMessage(null);
@@ -136,6 +156,13 @@ export function Dashboard({ onOpenStock, onOpenSector }: DashboardProps) {
           onDelete={handleDeleteWatchlist}
         />
       </section>
+
+      <RankingPanel
+        review={dailyReview}
+        loading={reviewLoading}
+        error={reviewError}
+        onRefresh={loadDailyReview}
+      />
 
       <SectorPanel
         sectors={sectors}
