@@ -1,4 +1,5 @@
 from datetime import date
+from datetime import datetime
 
 from pydantic import BaseModel, Field
 
@@ -35,6 +36,12 @@ class StockQuote(BaseModel):
     amount: float | None = None
     turnover_rate: float | None = None
     trade_date: date
+    source: str | None = None
+    is_live: bool = False
+    cache_time: datetime | None = None
+    quote_time: datetime | None = None
+    is_stale: bool = False
+    cache_age_seconds: float | None = None
 
 
 class KlineResponse(BaseModel):

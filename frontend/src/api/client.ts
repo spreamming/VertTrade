@@ -121,6 +121,20 @@ export async function getStockQuote(
   );
 }
 
+export async function getStockLiveQuote(
+  code: string,
+  refresh = false,
+): Promise<StockQuote> {
+  const params = new URLSearchParams();
+  if (refresh) {
+    params.set("refresh", "true");
+  }
+  const query = params.toString();
+  return request<StockQuote>(
+    `/api/stocks/${code}/quote/live${query ? `?${query}` : ""}`,
+  );
+}
+
 export async function getStockPosition(
   code: string,
   window = 250,

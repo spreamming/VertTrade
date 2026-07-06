@@ -43,6 +43,15 @@ def get_stock_quote(
     return service.get_quote(code, refresh=refresh)
 
 
+@router.get("/{code}/quote/live", response_model=StockQuote)
+def get_stock_live_quote(
+    code: str,
+    refresh: bool = False,
+    service: StockService = Depends(get_stock_service),
+):
+    return service.get_live_quote(code, refresh=refresh)
+
+
 @router.get("/{code}/position", response_model=StockPosition)
 def get_stock_position(
     code: str,

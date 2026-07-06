@@ -72,6 +72,26 @@ def client(monkeypatch):
         "backend.app.services.stock_service.fetch_daily_kline",
         fake_kline,
     )
+    monkeypatch.setattr(
+        "backend.app.services.stock_service.fetch_live_quote",
+        lambda code: {
+            "code": code,
+            "name": "贵州茅台" if code == "600519" else "平安银行",
+            "latest_price": 108.0,
+            "change_amount": 3.0,
+            "change_percent": 2.86,
+            "open": 104.0,
+            "high": 109.0,
+            "low": 103.0,
+            "pre_close": 105.0,
+            "volume": 1500.0,
+            "amount": 150000.0,
+            "turnover_rate": 1.8,
+            "trade_date": date(2026, 7, 2),
+            "quote_time": None,
+            "source": "test_live",
+        },
+    )
 
     app.dependency_overrides[get_db] = override_get_db
     with TestClient(app) as test_client:
@@ -106,6 +126,20 @@ def test_get_stock_quote(client: TestClient):
     payload = response.json()
     assert payload["latest_price"] == 105.0
     assert payload["change_amount"] == 2.0
+
+
+def test_get_stock_live_quote(client: TestClient):
+    response = client.get("/api/stocks/600519/quote/live")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["latest_price"] == 108.0
+    assert payload["change_percent"] == 2.86
+    assert payload["is_live"] is True
+    assert payload["source"] == "test_live"
+    assert "quote_time" in payload
+    assert payload["is_stale"] is False
+    assert payload["cache_age_seconds"] == 0
 
 
 def test_get_stock_position(client: TestClient):

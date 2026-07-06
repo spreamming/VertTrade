@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   addWatchlistItem,
@@ -6,24 +6,31 @@ import {
   getDashboard,
   getDailyReview,
   getIndustrySectors,
+  getStockLiveQuote,
   type DashboardResponse,
   type DailyReviewResponse,
   type SectorSummary,
+  type StockQuote,
   type StockSummary,
+  type WatchlistItem,
 } from "../api/client";
 import { SearchBox } from "../components/SearchBox";
 import { SectorPanel } from "../components/SectorPanel";
 import { RankingPanel } from "../components/RankingPanel";
 import { WatchlistTable } from "../components/WatchlistTable";
+import { WatchlistReviewPanel } from "../components/WatchlistReviewPanel";
 
 type DashboardProps = {
   onOpenStock: (stock: StockSummary) => void;
   onOpenSector: (sector: SectorSummary) => void;
 };
 
+const MAX_AUTO_REFRESH_WATCHLIST = 20;
+
 export function Dashboard({ onOpenStock, onOpenSector }: DashboardProps) {
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [dailyReview, setDailyReview] = useState<DailyReviewResponse | null>(null);
+  const [liveQuotes, setLiveQuotes] = useState<Record<string, StockQuote>>({});
   const [sectors, setSectors] = useState<SectorSummary[]>([]);
   const [sectorSource, setSectorSource] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -82,6 +89,47 @@ export function Dashboard({ onOpenStock, onOpenSector }: DashboardProps) {
     void loadSectors();
   }, [loadDashboard, loadDailyReview, loadSectors]);
 
+  useEffect(() => {
+    const items = dashboard?.watchlist_summary ?? [];
+    if (items.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function refreshLiveQuotes() {
+      const refreshItems = items.slice(0, MAX_AUTO_REFRESH_WATCHLIST);
+      const results = await Promise.allSettled(
+        refreshItems.map(async (item) => ({
+          code: item.code,
+          quote: await getStockLiveQuote(item.code, true),
+        })),
+      );
+      if (cancelled) {
+        return;
+      }
+      setLiveQuotes((current) => {
+        const next = { ...current };
+        for (const result of results) {
+          if (result.status === "fulfilled") {
+            next[result.value.code] = result.value.quote;
+          }
+        }
+        return next;
+      });
+    }
+
+    void refreshLiveQuotes();
+    const intervalId = window.setInterval(() => {
+      void refreshLiveQuotes();
+    }, 5000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [dashboard?.watchlist_summary]);
+
   async function handleAddWatchlist(stock: StockSummary) {
     setActionMessage(null);
     setError(null);
@@ -107,6 +155,29 @@ export function Dashboard({ onOpenStock, onOpenSector }: DashboardProps) {
       setError(err instanceof Error ? err.message : "删除自选股失败");
     }
   }
+
+  const watchlistSummary = useMemo<WatchlistItem[]>(() => {
+    return (dashboard?.watchlist_summary ?? []).map((item) => {
+      const liveQuote = liveQuotes[item.code];
+      if (!liveQuote) {
+        return item;
+      }
+
+      return {
+        ...item,
+        latest_price: liveQuote.latest_price,
+        change_amount: liveQuote.change_amount,
+        change_percent: liveQuote.change_percent,
+        trade_date: liveQuote.trade_date,
+        source: liveQuote.source,
+        is_live: liveQuote.is_live,
+        cache_time: liveQuote.cache_time,
+        quote_time: liveQuote.quote_time,
+        is_stale: liveQuote.is_stale,
+        cache_age_seconds: liveQuote.cache_age_seconds,
+      };
+    });
+  }, [dashboard?.watchlist_summary, liveQuotes]);
 
   return (
     <main className="app-shell dashboard-shell">
@@ -142,7 +213,7 @@ export function Dashboard({ onOpenStock, onOpenSector }: DashboardProps) {
           <div>
             <h2>自选股</h2>
             <p className="section-copy">
-              自选股行情来自本地缓存；缺失时会尝试从数据源拉取。
+              自选股行情会近实时刷新；为保护免费数据源，自动刷新前 {MAX_AUTO_REFRESH_WATCHLIST} 条。
             </p>
           </div>
           <button type="button" className="refresh-button" onClick={loadDashboard}>
@@ -150,12 +221,14 @@ export function Dashboard({ onOpenStock, onOpenSector }: DashboardProps) {
           </button>
         </div>
         <WatchlistTable
-          items={dashboard?.watchlist_summary ?? []}
+          items={watchlistSummary}
           loading={loading}
           onOpenStock={onOpenStock}
           onDelete={handleDeleteWatchlist}
         />
       </section>
+
+      <WatchlistReviewPanel items={watchlistSummary} />
 
       <RankingPanel
         review={dailyReview}

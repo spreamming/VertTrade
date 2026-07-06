@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from types import SimpleNamespace
 
 import requests
@@ -9,6 +9,10 @@ from ..collectors.kline_collector import fetch_daily_kline
 from ..collectors.moneyflow_collector import (
     MoneyflowDataSourceError,
     fetch_stock_moneyflow,
+)
+from ..collectors.realtime_quote_collector import (
+    RealtimeQuoteDataSourceError,
+    fetch_live_quote,
 )
 from ..collectors.stock_basic_collector import fetch_stock_list
 from ..indicators.position_score import calculate_position_score
@@ -29,6 +33,8 @@ from ..schemas.stock import (
 class StockService:
     # Calendar-day tolerance before treating cached K-line end as stale (weekends/holidays).
     _CACHE_END_TOLERANCE_DAYS = 4
+    _LIVE_QUOTE_TTL_SECONDS = 3
+    _live_quote_cache: dict[str, tuple[datetime, StockQuote]] = {}
 
     def __init__(self, db: Session):
         self.db = db
@@ -204,6 +210,71 @@ class StockService:
     def get_quote(self, code: str, refresh: bool = False) -> StockQuote:
         kline = self.get_kline(code, refresh=refresh)
         return self._build_quote_from_kline(kline, code)
+
+    def get_live_quote(self, code: str, refresh: bool = False) -> StockQuote:
+        self.ensure_stock_catalog()
+        stock = self.stock_repo.get_by_code(code)
+        if stock is None:
+            raise HTTPException(status_code=404, detail=f"未找到股票 {code}")
+
+        cached = self._live_quote_cache.get(code)
+        now = datetime.now()
+        if not refresh and cached:
+            cached_at, cached_quote = cached
+            cache_age = (now - cached_at).total_seconds()
+            if cache_age <= self._LIVE_QUOTE_TTL_SECONDS:
+                return cached_quote.model_copy(
+                    update={
+                        "cache_time": cached_at,
+                        "is_live": True,
+                        "is_stale": False,
+                        "cache_age_seconds": cache_age,
+                    }
+                )
+
+        try:
+            payload = fetch_live_quote(code)
+        except (requests.RequestException, RealtimeQuoteDataSourceError) as exc:
+            if cached:
+                cached_at, cached_quote = cached
+                cache_age = (now - cached_at).total_seconds()
+                return cached_quote.model_copy(
+                    update={
+                        "cache_time": cached_at,
+                        "is_live": True,
+                        "is_stale": True,
+                        "cache_age_seconds": cache_age,
+                    }
+                )
+            raise HTTPException(
+                status_code=503,
+                detail="暂时无法从数据源获取实时行情，请稍后重试。",
+            ) from exc
+
+        quote = StockQuote(
+            code=stock.code,
+            name=payload["name"] or stock.name,
+            exchange=stock.exchange,
+            latest_price=payload["latest_price"],
+            change_amount=payload["change_amount"],
+            change_percent=payload["change_percent"],
+            open=payload["open"],
+            high=payload["high"],
+            low=payload["low"],
+            pre_close=payload["pre_close"],
+            volume=payload["volume"],
+            amount=payload["amount"],
+            turnover_rate=payload["turnover_rate"],
+            trade_date=payload["trade_date"],
+            source=payload["source"],
+            is_live=True,
+            cache_time=now,
+            quote_time=payload.get("quote_time"),
+            is_stale=False,
+            cache_age_seconds=0,
+        )
+        self._live_quote_cache[code] = (now, quote)
+        return quote
 
     def get_position(
         self,

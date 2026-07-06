@@ -2,101 +2,98 @@
 
 This file summarizes the latest checker process and gives focused suggestions for the next builder agent. It should be overwritten after every future checker run.
 
-**Last checker run:** 2026-07-06 (eighth run)  
-**Current stage checked:** Phase 7 ranking click-through workflow MVP  
+**Last checker run:** 2026-07-06 (ninth run)  
+**Current stage checked:** Stage 8 realtime market watch MVP  
 **Source report:** `CHECKER_LOG.md`
 
 ---
 
 ## Checker Summary
 
-The checker verified the current local stage: Phase 7 ranking click-through workflow.
+The checker verified the current local stage: Stage 8 realtime market watch MVP.
 
 Result: **PASS**.
 
 Verified behavior:
 
-- Backend tests pass: 38/38.
+- Backend tests pass: 39/39.
 - Frontend typecheck passes.
 - Frontend production build passes.
-- `/api/rankings/daily-review?limit=5` returns 200.
-- Live daily review returns all 8 ranking groups with items.
-- Stock ranking rows are wired to open stock detail.
-- Sector ranking rows are wired to open sector detail.
-- Sector detail still supports constituent click-through to stock detail.
+- `/api/stocks/600519/quote/live?refresh=true` returns 200.
+- `/api/stocks/000001/quote/live?refresh=true` returns 200.
+- Live quote responses include `is_live`, `source`, `quote_time`, and `cache_time`.
+- Stock detail polls live quotes every 3 seconds.
+- Watchlist live refresh polls every 5 seconds.
+- Watchlist review summary is present.
+- Daily review endpoint still returns all 8 ranking groups.
 - Project remains a personal market observation app, not a trading platform.
 
 ---
 
 ## Builder Fix Suggestions
 
-### 1. Add interaction coverage for ranking clicks
+### 1. Update provider wording in docs
 
-The click-through workflow compiles and is wired correctly, but there are no frontend interaction tests.
+The implementation now prefers Tencent live quote data and uses Eastmoney as fallback.
 
-Suggested checks:
+Suggested updates:
 
-- A stock ranking row click opens `StockDetail`.
-- A sector ranking row click opens `SectorDetail`.
-- A constituent click inside `SectorDetail` opens `StockDetail`.
-- Back from stock detail after opening from a sector returns to the sector detail.
+- Update `market_watch_development_plan.md` Stage 8 status text.
+- Update `README.md` current app flow to mention realtime quote refresh, ranking review, sectors, and watchlist review summary.
+- Keep the wording as “近实时” rather than “实时” to avoid overstating provider freshness.
 
-If no frontend test framework is planned yet, do a short manual browser smoke test and record the result in `AGENT_LOG.md`.
+### 2. Add stale/fallback status for live quotes
 
-### 2. Improve sector metadata when opened from rankings
-
-Sector ranking rows carry only the fields available in `RankingItem`.
-
-Current effect:
-
-- Sector detail can fetch constituents with code/name.
-- Some sector summary fields may show as `--` when opened from rankings.
+Backend can return cached live quotes if provider refresh fails and a cached value exists.
 
 Suggested improvement:
 
-- If practical, enrich sector ranking items with more sector fields.
-- Or let `SectorDetail` fetch sector summary data by code/name before rendering the header.
-- Keep the page usable even when summary enrichment fails.
+- Add a field such as `is_stale` or `cache_age_seconds`.
+- Show a small UI label when quote data is served from cache after provider failure.
+- Keep `quote_time` and `cache_time` visible.
 
-### 3. Make clickable ranking rows visually obvious
+### 3. Protect watchlist polling from large lists
 
-Ranking rows are now buttons. Make sure the UI clearly communicates they are clickable.
+Dashboard currently requests live quotes for every watchlist item every 5 seconds.
 
-Suggested UI polish:
+Suggested guardrails:
 
-- Add hover/focus styling to `ranking-row-button`.
-- Ensure keyboard focus state is visible.
-- Consider a small text hint near the ranking panel: `点击条目查看详情`.
+- Cap the number of auto-refreshed watchlist rows.
+- Batch requests if a backend batch endpoint is added later.
+- Add backoff when repeated live quote refreshes fail.
+- Keep manual refresh available.
 
-### 4. Keep navigation behavior intentional
+### 4. Add manual or automated realtime UI verification
 
-Current state behavior is acceptable:
+Backend tests cover the live quote endpoint, but browser behavior is not covered.
 
-- Opening stock from Dashboard shows stock detail.
-- Opening sector from Dashboard shows sector detail.
-- Opening stock from sector detail shows stock detail.
-- Back from that stock detail returns to the previous sector detail because selected sector remains in state.
+Suggested checks:
 
-If navigation grows further, consider making this explicit with a small navigation state helper instead of adding more independent selected-state branches.
+- Stock detail updates latest quote without reloading the whole page.
+- Watchlist latest price and change percent update after the polling interval.
+- Provider quote time and local refresh time are visible.
+- Live quote failure shows a local warning and does not break K-line, position, or money-flow panels.
 
-### 5. Preserve ranking failure isolation
+### 5. Keep Stage 8 MVP scope focused
 
-Do not regress the Phase 6 behavior:
+Current Stage 8 MVP is enough for near-realtime quote observation.
 
-- One failed ranking source should only affect its own group.
-- Keep group-level error messages.
-- Keep the available-group count note.
-- Keep daily review usable even if one source is unavailable.
+Defer unless explicitly requested:
+
+- Minute K-line.
+- Time-sharing chart.
+- WebSocket/SSE push.
+- Tick or Level-2 data.
+- Complex realtime alerts.
 
 ### 6. Keep wording observational
 
 Continue using:
 
-- 每日复盘
-- 排行榜
-- 查看详情
-- 市场强弱
-- 资金方向
+- 近实时
+- 行情观察
+- 刷新时间
+- 行情时间
 - 观察维度
 
 Avoid:
@@ -106,19 +103,20 @@ Avoid:
 - 建仓
 - 清仓
 - 交易信号
+- 下单
 
-Rankings and click-through should support review, not trading instructions.
+Realtime data should support market watching, not trading execution.
 
 ---
 
 ## Suggested Next Build Direction
 
-Best next technical step: verify and polish the click-through workflow before adding more market data.
+Best next technical step: polish realtime quote reliability and user feedback before adding realtime charts.
 
 Recommended order:
 
-1. Manually test ranking row click-through in the browser or add frontend interaction tests.
-2. Add visible hover/focus states and a short click hint for ranking rows.
-3. Improve sector summary data when opening sector detail from a ranking row.
-4. Keep the daily review ranking error isolation intact.
-5. Then move toward broader review workflow polish or realtime watch features.
+1. Update docs to match Tencent-first live quote behavior.
+2. Add stale/cache-age metadata for live quote responses.
+3. Add watchlist polling guardrails for larger lists.
+4. Do a browser smoke test for stock detail and watchlist polling.
+5. Then consider minute K-line or time-sharing chart as the next realtime enhancement.

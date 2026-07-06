@@ -46,7 +46,7 @@ VertTrade/
 
 ## Current Stage
 
-Stage 0 through Phase 6 are complete. Phase 7 (ranking click-through workflow MVP) is now implemented locally.
+Stage 0 through Phase 7 are complete. Stage 8 (real-time market watch MVP) is now implemented locally as a first version.
 
 You can:
 
@@ -68,10 +68,13 @@ You can:
 16. See stock ranking fallbacks through direct Eastmoney requests and Tonghuashun pages when provider APIs are unstable.
 17. Click stock ranking rows to open stock detail pages.
 18. Click sector ranking rows to open sector detail pages.
+19. Review a watchlist summary with high/low position counts, money-flow counts, and strongest/weakest watchlist names.
+20. Use near-real-time quote refresh on stock detail pages.
+21. See lightweight near-real-time price and change-percent refresh in the watchlist table, including provider quote time and local refresh time.
 
 Next target:
 
-1. Add sector money-flow charts.
+1. Add minute K-line and time-sharing chart.
 2. Major index and market overview data for the Dashboard.
 3. Broader price-position support for indices and additional windows in the UI.
 

@@ -55,7 +55,7 @@ Older pushed commits before `dd0b997` may still contain Cursor co-author trailer
 - GitHub repo: `https://github.com/spreamming/VertTrade.git`
 - Local branch: `main`
 - Remote: `origin`
-- Latest pushed commit on `main`: `2042be7 stage 6`
+- Latest pushed commit on `main`: `d679ed8 stage 7`
 - Correct Git identity for commits: `spreamming <fredspream@gmail.com>`
 - Repo-local Git identity is configured in `.git/config` so future commits in this repo use the correct author.
 
@@ -80,7 +80,7 @@ Initial scaffold already created:
 
 Dependencies have been installed locally.
 
-Stage 0 through Phase 6 are complete and pushed. Phase 7 ranking click-through workflow MVP is ready to commit as stage 7.
+Stage 0 through Phase 7 are complete and pushed. Stage 8 realtime market watch MVP is ready to commit as stage 8.
 
 Current verification commands have passed:
 
@@ -155,3 +155,9 @@ Current verification commands have passed:
 
 - Implemented Phase 7 MVP: daily review ranking rows are now clickable. Stock ranking rows open `StockDetail`; sector ranking rows open `SectorDetail`; sector detail still supports constituent click-through to stock detail. Verified 38 backend tests and frontend typecheck/build.
 - Applied Phase 7 checker suggestions: ranking rows now show clearer click affordance and keyboard focus styling, the ranking panel includes a “点击条目可查看详情” hint, and sector ranking click-through carries additional sector summary metadata into `SectorDetail`. Verified 38 backend tests and frontend typecheck/build.
+- Committed and pushed `d679ed8 stage 7` without any `Co-authored-by` trailer (recreated via `commit-tree` after Cursor injected co-author on first attempt). Verified 38 backend tests, frontend typecheck, and push to `origin/main`.
+- Re-checked the roadmap before Stage 8 and found one unfinished Stage 7 item: watchlist review summary. Reverted the mistaken local "Phase 8 sector money-flow snapshot" work, added a Dashboard watchlist review summary for high/low price position, money-flow counts, strongest/weakest watchlist names, and verified 38 backend tests plus frontend typecheck/build. The next correct stage remains Stage 8 real-time market watch.
+- Implemented Stage 8 realtime market watch MVP: added Eastmoney live quote collector with 3-second in-memory cache, `/api/stocks/{code}/quote/live`, stock detail 3-second live quote polling, and watchlist lightweight live price refresh every 5 seconds. Live smoke returned realtime quotes for `600519` and `000001`; backend tests now 39 pass and frontend typecheck/build pass. Minute K/time-sharing chart remains future work.
+- Fixed Stage 8 Dashboard realtime behavior: watchlist live refresh now merges the full live quote payload, so latest price, change amount/percent, trade date, and watchlist review summary all update from realtime data rather than only replacing the latest price. Verified 39 backend tests and frontend typecheck/build.
+- Improved Stage 8 quote freshness accuracy: live quote collector now prefers Tencent quote data with provider quote time and uses Eastmoney as fallback; UI displays both provider quote time and local refresh time, uses “近实时” wording, and polling requests `refresh=true` to avoid confusing backend cache with source freshness. Verified 39 backend tests and frontend typecheck/build.
+- Applied Stage 8 checker suggestions: live quote responses now include `is_stale` and `cache_age_seconds`; UI distinguishes “近实时” from “缓存行情”; Dashboard caps automatic watchlist live refresh to the first 20 rows and merges full live quote fields into the table and watchlist review summary. Updated README/plan wording to Tencent-first with Eastmoney fallback. Verified backend tests and frontend typecheck/build.

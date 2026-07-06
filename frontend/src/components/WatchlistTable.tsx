@@ -25,6 +25,19 @@ function formatPercent(value: number | null | undefined): string {
   return `${formatNumber(value)}%`;
 }
 
+function formatTime(value: string | null | undefined): string {
+  if (!value) {
+    return "--";
+  }
+  return new Date(value).toLocaleTimeString("zh-CN", {
+    hour12: false,
+  });
+}
+
+function liveLabel(isStale: boolean | undefined): string {
+  return isStale ? "缓存行情" : "近实时";
+}
+
 export function WatchlistTable({
   items,
   loading,
@@ -86,8 +99,22 @@ export function WatchlistTable({
                 <td>
                   {item.code} · {item.exchange}
                 </td>
-                <td>{formatNumber(item.latest_price)}</td>
-                <td className={changeClass}>{formatPercent(item.change_percent)}</td>
+                <td>
+                  {formatNumber(item.latest_price)}
+                  {item.is_live ? (
+                    <p className="table-note table-note-muted">
+                      {liveLabel(item.is_stale)}
+                    </p>
+                  ) : null}
+                </td>
+                <td className={changeClass}>
+                  {formatPercent(item.change_percent)}
+                  {item.is_live ? (
+                    <p className="table-note table-note-muted">
+                      {liveLabel(item.is_stale)}
+                    </p>
+                  ) : null}
+                </td>
                 <td>
                   {item.position_score !== null &&
                   item.position_score !== undefined &&
@@ -123,7 +150,17 @@ export function WatchlistTable({
                     <p className="table-note">{item.moneyflow_error}</p>
                   ) : null}
                 </td>
-                <td>{item.trade_date ?? item.moneyflow_date ?? "--"}</td>
+                <td>
+                  {item.trade_date ?? item.moneyflow_date ?? "--"}
+                  {item.is_live ? (
+                    <p className="table-note table-note-muted">
+                      行情 {formatTime(item.quote_time)} · 刷新 {formatTime(item.cache_time)}
+                      {item.is_stale && item.cache_age_seconds !== null && item.cache_age_seconds !== undefined
+                        ? ` · 缓存 ${Math.round(item.cache_age_seconds)} 秒`
+                        : ""}
+                    </p>
+                  ) : null}
+                </td>
                 <td>
                   <button
                     type="button"

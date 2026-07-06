@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import {
   getStockKline,
+  getStockLiveQuote,
   getStockMoneyflow,
   getStockPosition,
   type KlineResponse,
@@ -30,6 +31,22 @@ function formatNumber(value: number | null | undefined, digits = 2): string {
   });
 }
 
+function formatDateTime(value: string | null | undefined): string {
+  if (!value) {
+    return "--";
+  }
+  return new Date(value).toLocaleString("zh-CN", {
+    hour12: false,
+  });
+}
+
+function formatCacheAge(value: number | null | undefined): string {
+  if (value === null || value === undefined) {
+    return "--";
+  }
+  return `${Math.round(value)} 秒`;
+}
+
 export function StockDetail({ stock, onBack }: StockDetailProps) {
   const [quote, setQuote] = useState<StockQuote | null>(null);
   const [kline, setKline] = useState<KlineResponse | null>(null);
@@ -39,6 +56,7 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
   const [moneyflowLoading, setMoneyflowLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [moneyflowError, setMoneyflowError] = useState<string | null>(null);
+  const [liveQuoteError, setLiveQuoteError] = useState<string | null>(null);
 
   const loadData = useCallback(
     async (refresh = false) => {
@@ -86,6 +104,36 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
     void loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadLiveQuote() {
+      try {
+        const liveQuote = await getStockLiveQuote(stock.code, true);
+        if (!cancelled) {
+          setQuote(liveQuote);
+          setLiveQuoteError(null);
+        }
+      } catch (err: unknown) {
+        if (!cancelled) {
+          setLiveQuoteError(
+            err instanceof Error ? err.message : "实时行情刷新失败",
+          );
+        }
+      }
+    }
+
+    void loadLiveQuote();
+    const intervalId = window.setInterval(() => {
+      void loadLiveQuote();
+    }, 3000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [stock.code]);
+
   const changeClass =
     quote?.change_percent !== null &&
     quote?.change_percent !== undefined &&
@@ -117,6 +165,7 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
 
       {loading && !quote ? <p className="loading-text">正在加载行情数据...</p> : null}
       {error ? <p className="search-error">{error}</p> : null}
+      {liveQuoteError ? <p className="table-note">{liveQuoteError}</p> : null}
 
       {quote ? (
         <section className="quote-grid">
@@ -145,6 +194,28 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
           <div>
             <dt>交易日期</dt>
             <dd>{quote.trade_date}</dd>
+          </div>
+          <div>
+            <dt>行情状态</dt>
+            <dd>
+              {quote.is_live
+                ? quote.is_stale
+                  ? "缓存行情"
+                  : "近实时"
+                : "日线缓存"}
+            </dd>
+          </div>
+          <div>
+            <dt>行情时间</dt>
+            <dd>{formatDateTime(quote.quote_time)}</dd>
+          </div>
+          <div>
+            <dt>刷新时间</dt>
+            <dd>{formatDateTime(quote.cache_time)}</dd>
+          </div>
+          <div>
+            <dt>缓存年龄</dt>
+            <dd>{quote.is_stale ? formatCacheAge(quote.cache_age_seconds) : "--"}</dd>
           </div>
         </section>
       ) : null}

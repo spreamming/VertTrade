@@ -37,6 +37,12 @@ export type StockQuote = {
   amount?: number | null;
   turnover_rate?: number | null;
   trade_date: string;
+  source?: string | null;
+  is_live?: boolean;
+  cache_time?: string | null;
+  quote_time?: string | null;
+  is_stale?: boolean;
+  cache_age_seconds?: number | null;
 };
 
 export type StockPosition = {
@@ -162,6 +168,12 @@ export type WatchlistItem = {
   main_net_ratio?: number | null;
   moneyflow_date?: string | null;
   moneyflow_error?: string | null;
+  source?: string | null;
+  is_live?: boolean;
+  cache_time?: string | null;
+  quote_time?: string | null;
+  is_stale?: boolean;
+  cache_age_seconds?: number | null;
   created_at: string;
 };
 
