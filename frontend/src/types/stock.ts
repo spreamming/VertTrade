@@ -121,7 +121,11 @@ export type RankingItem = {
   amount?: number | null;
   turnover_rate?: number | null;
   main_net_inflow?: number | null;
+  market_value?: number | null;
+  rising_count?: number | null;
+  falling_count?: number | null;
   leading_stock?: string | null;
+  leading_stock_change_percent?: number | null;
 };
 
 export type RankingGroup = {

@@ -162,6 +162,8 @@ export function Dashboard({ onOpenStock, onOpenSector }: DashboardProps) {
         loading={reviewLoading}
         error={reviewError}
         onRefresh={loadDailyReview}
+        onOpenStock={onOpenStock}
+        onOpenSector={onOpenSector}
       />
 
       <SectorPanel

@@ -2,103 +2,91 @@
 
 This file summarizes the latest checker process and gives focused suggestions for the next builder agent. It should be overwritten after every future checker run.
 
-**Last checker run:** 2026-07-03 (seventh run)  
-**Current stage checked:** Phase 6 daily review / ranking MVP  
+**Last checker run:** 2026-07-06 (eighth run)  
+**Current stage checked:** Phase 7 ranking click-through workflow MVP  
 **Source report:** `CHECKER_LOG.md`
 
 ---
 
 ## Checker Summary
 
-The checker verified the current local stage: Phase 6 daily review / rankings.
+The checker verified the current local stage: Phase 7 ranking click-through workflow.
 
 Result: **PASS**.
 
 Verified behavior:
 
-- Backend tests pass: 37/37.
+- Backend tests pass: 38/38.
 - Frontend typecheck passes.
 - Frontend production build passes.
 - `/api/rankings/daily-review?limit=5` returns 200.
-- Live daily review returns all 8 ranking groups.
-- Each ranking group has live items and no error in the smoke check.
-- Dashboard shows the daily review / ranking panel.
-- Per-group source labels and error/empty states are implemented.
+- Live daily review returns all 8 ranking groups with items.
+- Stock ranking rows are wired to open stock detail.
+- Sector ranking rows are wired to open sector detail.
+- Sector detail still supports constituent click-through to stock detail.
 - Project remains a personal market observation app, not a trading platform.
-
-Live ranking groups verified:
-
-- 个股涨幅榜
-- 个股跌幅榜
-- 成交额榜
-- 换手率榜
-- 个股主力净流入榜
-- 个股主力净流出榜
-- 板块涨幅榜
-- 板块资金流榜
 
 ---
 
 ## Builder Fix Suggestions
 
-### 1. Keep provider failure isolation
+### 1. Add interaction coverage for ranking clicks
 
-The current design is good: a single failed ranking source should only affect its own group.
+The click-through workflow compiles and is wired correctly, but there are no frontend interaction tests.
 
-Preserve this behavior when modifying ranking code:
+Suggested checks:
 
-- Do not let one failed stock source break sector rankings.
-- Do not let one failed money-flow source break price/amount/turnover rankings.
-- Keep group-level Chinese error messages.
-- Keep the summary note showing how many ranking groups are available.
+- A stock ranking row click opens `StockDetail`.
+- A sector ranking row click opens `SectorDetail`.
+- A constituent click inside `SectorDetail` opens `StockDetail`.
+- Back from stock detail after opening from a sector returns to the sector detail.
 
-### 2. Format `ranking_service.py`
+If no frontend test framework is planned yet, do a short manual browser smoke test and record the result in `AGENT_LOG.md`.
 
-`backend/app/services/ranking_service.py` runs correctly, but the sector group construction has awkward indentation.
+### 2. Improve sector metadata when opened from rankings
 
-Suggested fix:
+Sector ranking rows carry only the fields available in `RankingItem`.
 
-- Run a formatting pass or manually align the list entries.
-- Keep the logic unchanged unless tests require a behavior change.
-- Add or keep tests around all 8 ranking groups after formatting.
+Current effect:
 
-### 3. Consider lightweight daily-review caching
+- Sector detail can fetch constituents with code/name.
+- Some sector summary fields may show as `--` when opened from rankings.
 
-Live ranking data depends on external providers. The latest smoke test passed, but provider stability has been a recurring issue.
+Suggested improvement:
 
-Suggested approach:
+- If practical, enrich sector ranking items with more sector fields.
+- Or let `SectorDetail` fetch sector summary data by code/name before rendering the header.
+- Keep the page usable even when summary enrichment fails.
 
-- Add a short-lived cache for the daily review response.
-- Keep the last successful response visible if refresh fails.
-- Make cache age visible in the UI later if needed.
-- Do not add historical ranking storage yet unless the user asks for daily snapshots.
+### 3. Make clickable ranking rows visually obvious
 
-### 4. Improve Dashboard usability before adding more panels
+Ranking rows are now buttons. Make sure the UI clearly communicates they are clickable.
 
-Dashboard now includes:
+Suggested UI polish:
 
-- Add watchlist
-- Watchlist table
-- Daily review / rankings
-- Industry sector table
-- Market notes
+- Add hover/focus styling to `ranking-row-button`.
+- Ensure keyboard focus state is visible.
+- Consider a small text hint near the ranking panel: `点击条目查看详情`.
 
-Suggested UI direction:
+### 4. Keep navigation behavior intentional
 
-- Keep section ordering clear: watchlist first, daily review second, sectors third.
-- Consider collapsible sections or tabs later if the page becomes too long.
-- Avoid adding more large panels until the current Dashboard remains easy to scan.
+Current state behavior is acceptable:
 
-### 5. Consider click-through from rankings later
+- Opening stock from Dashboard shows stock detail.
+- Opening sector from Dashboard shows sector detail.
+- Opening stock from sector detail shows stock detail.
+- Back from that stock detail returns to the previous sector detail because selected sector remains in state.
 
-Ranking cards are currently read-only.
+If navigation grows further, consider making this explicit with a small navigation state helper instead of adding more independent selected-state branches.
 
-Possible enhancement:
+### 5. Preserve ranking failure isolation
 
-- Stock ranking items could open `StockDetail`.
-- Sector ranking items could open `SectorDetail`.
+Do not regress the Phase 6 behavior:
 
-This is useful, but not required to accept the current Phase 6 MVP.
+- One failed ranking source should only affect its own group.
+- Keep group-level error messages.
+- Keep the available-group count note.
+- Keep daily review usable even if one source is unavailable.
 
 ### 6. Keep wording observational
 
@@ -106,6 +94,7 @@ Continue using:
 
 - 每日复盘
 - 排行榜
+- 查看详情
 - 市场强弱
 - 资金方向
 - 观察维度
@@ -118,18 +107,18 @@ Avoid:
 - 清仓
 - 交易信号
 
-Rankings should support market review, not trading instructions.
+Rankings and click-through should support review, not trading instructions.
 
 ---
 
 ## Suggested Next Build Direction
 
-Best next technical step: stabilize and polish the daily review experience before expanding into new stages.
+Best next technical step: verify and polish the click-through workflow before adding more market data.
 
 Recommended order:
 
-1. Format and simplify `ranking_service.py`.
-2. Add lightweight daily-review response caching.
-3. Keep last successful ranking data visible on refresh failure.
-4. Consider click-through from ranking rows to stock/sector detail.
-5. Then move toward broader review workflow or realtime watch features.
+1. Manually test ranking row click-through in the browser or add frontend interaction tests.
+2. Add visible hover/focus states and a short click hint for ranking rows.
+3. Improve sector summary data when opening sector detail from a ranking row.
+4. Keep the daily review ranking error isolation intact.
+5. Then move toward broader review workflow polish or realtime watch features.

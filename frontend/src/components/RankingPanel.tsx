@@ -1,4 +1,10 @@
-import type { DailyReviewResponse, RankingGroup, RankingItem } from "../api/client";
+import type {
+  DailyReviewResponse,
+  RankingGroup,
+  RankingItem,
+  SectorSummary,
+  StockSummary,
+} from "../api/client";
 import { formatMoneyAmount } from "../utils/money";
 
 type RankingPanelProps = {
@@ -6,6 +12,8 @@ type RankingPanelProps = {
   loading: boolean;
   error: string | null;
   onRefresh: () => void;
+  onOpenStock: (stock: StockSummary) => void;
+  onOpenSector: (sector: SectorSummary) => void;
 };
 
 function formatNumber(value: number | null | undefined, digits = 2): string {
@@ -51,7 +59,49 @@ function metricText(item: RankingItem): string {
   return formatPercent(item.change_percent);
 }
 
-function RankingCard({ group }: { group: RankingGroup }) {
+function isSectorGroup(group: RankingGroup): boolean {
+  return group.key.startsWith("sector_");
+}
+
+function toStockSummary(item: RankingItem): StockSummary | null {
+  if (!item.code || !item.exchange) {
+    return null;
+  }
+  return {
+    code: item.code,
+    name: item.name,
+    exchange: item.exchange,
+  };
+}
+
+function toSectorSummary(item: RankingItem): SectorSummary | null {
+  if (!item.code) {
+    return null;
+  }
+  return {
+    code: item.code,
+    name: item.name,
+    change_percent: item.change_percent,
+    amount: item.amount,
+    main_net_inflow: item.main_net_inflow,
+    market_value: item.market_value,
+    turnover_rate: item.turnover_rate,
+    rising_count: item.rising_count,
+    falling_count: item.falling_count,
+    leading_stock: item.leading_stock,
+    leading_stock_change_percent: item.leading_stock_change_percent,
+  };
+}
+
+function RankingCard({
+  group,
+  onOpenStock,
+  onOpenSector,
+}: {
+  group: RankingGroup;
+  onOpenStock: (stock: StockSummary) => void;
+  onOpenSector: (sector: SectorSummary) => void;
+}) {
   return (
     <article className="ranking-card">
       <div className="ranking-card-header">
@@ -77,8 +127,29 @@ function RankingCard({ group }: { group: RankingGroup }) {
                 ? "quote-up"
                 : "quote-down";
 
+            const handleOpen = () => {
+              if (isSectorGroup(group)) {
+                const sector = toSectorSummary(item);
+                if (sector) {
+                  onOpenSector(sector);
+                }
+                return;
+              }
+
+              const stock = toStockSummary(item);
+              if (stock) {
+                onOpenStock(stock);
+              }
+            };
+
             return (
               <li key={`${group.key}-${item.code ?? item.name}`}>
+                <button
+                  type="button"
+                  className="ranking-row-button"
+                  onClick={handleOpen}
+                  disabled={!item.code}
+                >
                 <span className="rank-index">{index + 1}</span>
                 <span>
                   <strong>{item.name}</strong>
@@ -94,6 +165,7 @@ function RankingCard({ group }: { group: RankingGroup }) {
                   <strong>{metricText(item)}</strong>
                   <small className={changeClass}>{formatPercent(item.change_percent)}</small>
                 </span>
+                </button>
               </li>
             );
           })}
@@ -108,6 +180,8 @@ export function RankingPanel({
   loading,
   error,
   onRefresh,
+  onOpenStock,
+  onOpenSector,
 }: RankingPanelProps) {
   return (
     <section className="status-card wide-card">
@@ -116,7 +190,7 @@ export function RankingPanel({
           <h2>每日复盘与排行榜</h2>
           <p className="section-copy">
             展示个股涨跌、成交、换手、主力资金，以及板块强弱和板块资金流。
-            单个数据源失败时只影响对应榜单。
+            单个数据源失败时只影响对应榜单。点击条目可查看详情。
           </p>
         </div>
         <button type="button" className="refresh-button" onClick={onRefresh}>
@@ -131,7 +205,12 @@ export function RankingPanel({
         <>
           <div className="ranking-grid">
             {review.groups.map((group) => (
-              <RankingCard key={group.key} group={group} />
+              <RankingCard
+                key={group.key}
+                group={group}
+                onOpenStock={onOpenStock}
+                onOpenSector={onOpenSector}
+              />
             ))}
           </div>
           <ul className="stage-list">

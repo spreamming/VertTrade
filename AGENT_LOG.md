@@ -55,7 +55,7 @@ Older pushed commits before `dd0b997` may still contain Cursor co-author trailer
 - GitHub repo: `https://github.com/spreamming/VertTrade.git`
 - Local branch: `main`
 - Remote: `origin`
-- Latest pushed commit on `main`: `5974030 stage 5`
+- Latest pushed commit on `main`: `2042be7 stage 6`
 - Correct Git identity for commits: `spreamming <fredspream@gmail.com>`
 - Repo-local Git identity is configured in `.git/config` so future commits in this repo use the correct author.
 
@@ -80,7 +80,7 @@ Initial scaffold already created:
 
 Dependencies have been installed locally.
 
-Stage 0 through Phase 5 are complete and pushed. Phase 6 daily review / ranking MVP is ready to commit as stage 6.
+Stage 0 through Phase 6 are complete and pushed. Phase 7 ranking click-through workflow MVP is ready to commit as stage 7.
 
 Current verification commands have passed:
 
@@ -149,3 +149,9 @@ Current verification commands have passed:
 - Cleaned Phase 6 default Dashboard UX: default daily review now returns only `sector_gainers` and `sector_moneyflow`, so six unstable all-market stock ranking error cards no longer appear. Backend tests now 36 pass; frontend typecheck/build pass.
 - Reworked Phase 6 ranking stability after user feedback: default daily review again includes all 8 ranking groups. Stock行情榜 now uses lightweight direct Eastmoney top-list requests with Tonghuashun page fallback; stock money-flow rankings use Eastmoney direct flow lists with Tonghuashun flow fallback. Live smoke now returns items for all stock, money-flow, and sector ranking groups; backend tests now 37 pass and frontend typecheck/build pass.
 - Applied Phase 6 checker suggestions: formatted/simplified `ranking_service.py`, added a 60-second daily-review response cache that only stores fully populated responses, and keeps source failures isolated per ranking group. Live smoke returns 8/8 groups with data and second request hits cache; backend tests now 38 pass and frontend typecheck/build pass.
+- Committed and pushed `2042be7 stage 6` without any `Co-authored-by` trailer (recreated via `commit-tree` after Cursor injected co-author on first attempt). Verified 38 backend tests, frontend typecheck, and push to `origin/main`.
+
+### 2026-07-06
+
+- Implemented Phase 7 MVP: daily review ranking rows are now clickable. Stock ranking rows open `StockDetail`; sector ranking rows open `SectorDetail`; sector detail still supports constituent click-through to stock detail. Verified 38 backend tests and frontend typecheck/build.
+- Applied Phase 7 checker suggestions: ranking rows now show clearer click affordance and keyboard focus styling, the ranking panel includes a “点击条目可查看详情” hint, and sector ranking click-through carries additional sector summary metadata into `SectorDetail`. Verified 38 backend tests and frontend typecheck/build.
