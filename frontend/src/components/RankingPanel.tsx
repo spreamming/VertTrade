@@ -37,9 +37,6 @@ function sourceLabel(source: string | null | undefined): string {
   if (source === "akshare_ths") {
     return "同花顺";
   }
-  if (source === "akshare_em_direct") {
-    return "东方财富直连";
-  }
   if (source === "akshare_em") {
     return "东方财富";
   }

@@ -47,7 +47,18 @@ export function MoneyFlowPanel({
   }
 
   if (!moneyflow || moneyflow.bars.length === 0) {
-    return null;
+    return (
+      <section className="moneyflow-panel">
+        <div className="section-header">
+          <div>
+            <h2>主力资金流</h2>
+            <p className="section-copy">
+              暂无该股票的主力资金流数据。K 线、价格位置和近实时行情仍可正常查看。
+            </p>
+          </div>
+        </div>
+      </section>
+    );
   }
 
   const latest: MoneyflowBar = moneyflow.bars[moneyflow.bars.length - 1];

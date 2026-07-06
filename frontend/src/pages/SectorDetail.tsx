@@ -31,30 +31,76 @@ function formatPercent(value: number | null | undefined): string {
   return `${formatNumber(value)}%`;
 }
 
+function sectorDetailCacheKey(sector: SectorSummary): string {
+  return `verttrade:sectorDetail:${sector.code}:${sector.name}`;
+}
+
+function readCachedSectorDetail(sector: SectorSummary): SectorDetailResponse | null {
+  try {
+    const raw = window.localStorage.getItem(sectorDetailCacheKey(sector));
+    return raw ? (JSON.parse(raw) as SectorDetailResponse) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedSectorDetail(
+  sector: SectorSummary,
+  detail: SectorDetailResponse,
+): void {
+  try {
+    window.localStorage.setItem(sectorDetailCacheKey(sector), JSON.stringify(detail));
+  } catch {
+    // localStorage is best-effort only.
+  }
+}
+
 export function SectorDetail({ sector, onBack, onOpenStock }: SectorDetailProps) {
-  const [detail, setDetail] = useState<SectorDetailResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [detail, setDetail] = useState<SectorDetailResponse | null>(() =>
+    readCachedSectorDetail(sector),
+  );
+  const [loading, setLoading] = useState(() => readCachedSectorDetail(sector) === null);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadSector = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const loadSector = useCallback(async (background = false) => {
+    if (background) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+      setError(null);
+    }
 
     try {
-      setDetail(await getIndustrySector(sector));
+      const nextDetail = await getIndustrySector(sector);
+      setDetail(nextDetail);
+      writeCachedSectorDetail(sector, nextDetail);
+      setError(null);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "加载板块详情失败");
+      if (detail) {
+        setError("板块成分股刷新失败，已显示上次成功数据。");
+      } else {
+        setError(err instanceof Error ? err.message : "加载板块详情失败");
+      }
     } finally {
-      setLoading(false);
+      if (background) {
+        setRefreshing(false);
+      } else {
+        setLoading(false);
+      }
     }
-  }, [sector]);
+  }, [detail, sector]);
 
   useEffect(() => {
-    void loadSector();
-  }, [loadSector]);
+    void loadSector(detail !== null);
+    // Initial mount only: render cached constituents immediately, then refresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const detailSourceText =
     detail?.source === "akshare_ths" ? "同花顺（AKShare）" : "东方财富（AKShare）";
+  const valueLabel = sector.amount !== null && sector.amount !== undefined ? "成交额" : "总市值";
+  const valueAmount = sector.amount ?? sector.market_value;
 
   return (
     <main className="app-shell dashboard-shell">
@@ -73,10 +119,10 @@ export function SectorDetail({ sector, onBack, onOpenStock }: SectorDetailProps)
         <button
           type="button"
           className="refresh-button"
-          onClick={() => void loadSector()}
-          disabled={loading}
+          onClick={() => void loadSector(false)}
+          disabled={loading || refreshing}
         >
-          刷新
+          {refreshing ? "刷新中..." : "刷新"}
         </button>
       </header>
 
@@ -98,8 +144,8 @@ export function SectorDetail({ sector, onBack, onOpenStock }: SectorDetailProps)
           </dd>
         </div>
         <div>
-          <dt>换手率</dt>
-          <dd>{formatPercent(sector.turnover_rate)}</dd>
+          <dt>{valueLabel}</dt>
+          <dd>{formatMoneyAmount(valueAmount)}</dd>
         </div>
         <div>
           <dt>上涨 / 下跌</dt>
@@ -108,8 +154,8 @@ export function SectorDetail({ sector, onBack, onOpenStock }: SectorDetailProps)
           </dd>
         </div>
         <div>
-          <dt>总市值</dt>
-          <dd>{formatMoneyAmount(sector.market_value)}</dd>
+          <dt>主力净流入</dt>
+          <dd>{formatMoneyAmount(sector.main_net_inflow)}</dd>
         </div>
       </section>
 
@@ -124,6 +170,9 @@ export function SectorDetail({ sector, onBack, onOpenStock }: SectorDetailProps)
         </div>
 
         {loading ? <p className="loading-text">正在加载成分股...</p> : null}
+        {refreshing && detail ? (
+          <p className="table-note table-note-muted">正在后台刷新成分股...</p>
+        ) : null}
 
         {detail && detail.constituents.length > 0 ? (
           <div className="watchlist-table-wrap">

@@ -2,99 +2,113 @@
 
 This file summarizes the latest checker process and gives focused suggestions for the next builder agent. It should be overwritten after every future checker run.
 
-**Last checker run:** 2026-07-06 (ninth run)  
-**Current stage checked:** Stage 8 realtime market watch MVP  
+**Last checker run:** 2026-07-06 (tenth run)  
+**Current stage checked:** Stage 9 stability / data quality / desktop packaging concept MVP  
 **Source report:** `CHECKER_LOG.md`
 
 ---
 
 ## Checker Summary
 
-The checker verified the current local stage: Stage 8 realtime market watch MVP.
+The checker verified whether current work follows the plan through Stage 9 and whether previous stages meet their acceptance expectations.
 
 Result: **PASS**.
 
 Verified behavior:
 
-- Backend tests pass: 39/39.
+- Backend tests pass: 40/40.
 - Frontend typecheck passes.
 - Frontend production build passes.
-- `/api/stocks/600519/quote/live?refresh=true` returns 200.
-- `/api/stocks/000001/quote/live?refresh=true` returns 200.
-- Live quote responses include `is_live`, `source`, `quote_time`, and `cache_time`.
-- Stock detail polls live quotes every 3 seconds.
-- Watchlist live refresh polls every 5 seconds.
-- Watchlist review summary is present.
-- Daily review endpoint still returns all 8 ranking groups.
+- Live quotes for `600519` and `000001` return 200.
+- Live quote responses include `is_stale` and `cache_age_seconds`.
+- Daily review endpoint returns 8 populated ranking groups.
+- Stage 9 stale realtime quote fallback test exists.
+- Stage 9 stability / data quality / desktop packaging concept doc exists.
+- Stage 0 through Stage 8 remain aligned with the planned build order.
 - Project remains a personal market observation app, not a trading platform.
+
+Overall assessment:
+
+- Stage 9 is acceptable as a **documentation + test MVP**.
+- It is not yet an executable desktop packaging proof of concept.
 
 ---
 
 ## Builder Fix Suggestions
 
-### 1. Update provider wording in docs
+### 1. Turn Stage 9 desktop concept into a runnable local launcher
 
-The implementation now prefers Tencent live quote data and uses Eastmoney as fallback.
+Current Stage 9 documentation is useful, but still conceptual.
 
-Suggested updates:
+Suggested next step:
 
-- Update `market_watch_development_plan.md` Stage 8 status text.
-- Update `README.md` current app flow to mention realtime quote refresh, ranking review, sectors, and watchlist review summary.
-- Keep the wording as “近实时” rather than “实时” to avoid overstating provider freshness.
+- Add a local launcher script that starts backend and frontend in the correct order.
+- Check whether ports `8000` and `5173` are already occupied.
+- Print clear Chinese startup instructions and URLs.
+- Keep this as a local developer/private-user launcher before choosing Electron or Tauri.
 
-### 2. Add stale/fallback status for live quotes
+### 2. Normalize Stage / Phase naming
 
-Backend can return cached live quotes if provider refresh fails and a cached value exists.
+The project currently uses both `Phase` and `Stage`.
 
-Suggested improvement:
+Suggested cleanup:
 
-- Add a field such as `is_stale` or `cache_age_seconds`.
-- Show a small UI label when quote data is served from cache after provider failure.
-- Keep `quote_time` and `cache_time` visible.
+- Use one naming convention in docs going forward.
+- If keeping both, define the mapping clearly once.
+- Keep historical log entries unchanged unless they are confusing.
 
-### 3. Protect watchlist polling from large lists
+### 3. Improve README current flow
 
-Dashboard currently requests live quotes for every watchlist item every 5 seconds.
+`README.md` now points to Stage 9 docs, but the app has grown beyond the old short flow.
 
-Suggested guardrails:
+Suggested README structure:
 
-- Cap the number of auto-refreshed watchlist rows.
-- Batch requests if a backend batch endpoint is added later.
-- Add backoff when repeated live quote refreshes fail.
-- Keep manual refresh available.
+- Core stock flow: search, K-line, price position, money-flow.
+- Watchlist flow: add/delete, live refresh, review summary.
+- Dashboard flow: daily review rankings and sectors.
+- Realtime flow: near-realtime quote polling and staleness labels.
+- Stability / desktop preparation: Stage 9 docs.
 
-### 4. Add manual or automated realtime UI verification
+### 4. Add browser smoke verification for realtime behavior
 
-Backend tests cover the live quote endpoint, but browser behavior is not covered.
+Backend tests cover stale fallback, but browser behavior still needs manual or automated verification.
 
 Suggested checks:
 
-- Stock detail updates latest quote without reloading the whole page.
-- Watchlist latest price and change percent update after the polling interval.
-- Provider quote time and local refresh time are visible.
-- Live quote failure shows a local warning and does not break K-line, position, or money-flow panels.
+- Stock detail quote updates without full page reload.
+- Watchlist quote and change-percent update after polling.
+- Cached/stale quote status is visible when applicable.
+- Historical K-line, position, and money-flow panels remain usable if live quote refresh fails.
 
-### 5. Keep Stage 8 MVP scope focused
+### 5. Keep Stage 9 scope focused
 
-Current Stage 8 MVP is enough for near-realtime quote observation.
+Stage 9 should harden the local MVP before adding more features.
 
-Defer unless explicitly requested:
+Good Stage 9 work:
 
-- Minute K-line.
-- Time-sharing chart.
-- WebSocket/SSE push.
-- Tick or Level-2 data.
-- Complex realtime alerts.
+- Better startup scripts.
+- Data quality docs.
+- Cache/staleness tests.
+- Provider fallback tests.
+- Desktop shell concept proof.
 
-### 6. Keep wording observational
+Defer:
+
+- AI analysis.
+- News.
+- Backtesting.
+- Complex alerts.
+- Brokerage or trading integrations.
+
+### 6. Preserve no-trading wording
 
 Continue using:
 
 - 近实时
 - 行情观察
-- 刷新时间
-- 行情时间
-- 观察维度
+- 数据质量
+- 缓存回退
+- 本地桌面壳
 
 Avoid:
 
@@ -105,18 +119,18 @@ Avoid:
 - 交易信号
 - 下单
 
-Realtime data should support market watching, not trading execution.
+Stage 9 should improve reliability and packaging readiness, not move toward trading execution.
 
 ---
 
 ## Suggested Next Build Direction
 
-Best next technical step: polish realtime quote reliability and user feedback before adding realtime charts.
+Best next technical step: make Stage 9 operational instead of only conceptual.
 
 Recommended order:
 
-1. Update docs to match Tencent-first live quote behavior.
-2. Add stale/cache-age metadata for live quote responses.
-3. Add watchlist polling guardrails for larger lists.
-4. Do a browser smoke test for stock detail and watchlist polling.
-5. Then consider minute K-line or time-sharing chart as the next realtime enhancement.
+1. Add a local launcher script for backend + frontend.
+2. Add startup checks for ports and dependency presence.
+3. Update README with grouped current app flows.
+4. Add browser smoke notes or lightweight frontend interaction tests for realtime polling.
+5. Re-evaluate Electron vs Tauri only after the launcher path works smoothly.

@@ -1,15 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
 
 import {
+  addWatchlistItem,
+  deleteWatchlistItem,
   getStockKline,
   getStockLiveQuote,
   getStockMoneyflow,
   getStockPosition,
+  getWatchlist,
   type KlineResponse,
   type MoneyflowResponse,
   type StockPosition,
   type StockQuote,
   type StockSummary,
+  type WatchlistItem,
 } from "../api/client";
 import { KLineChart } from "../components/KLineChart";
 import { MoneyFlowPanel } from "../components/MoneyFlowPanel";
@@ -57,6 +61,21 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
   const [error, setError] = useState<string | null>(null);
   const [moneyflowError, setMoneyflowError] = useState<string | null>(null);
   const [liveQuoteError, setLiveQuoteError] = useState<string | null>(null);
+  const [watchlistItem, setWatchlistItem] = useState<WatchlistItem | null>(null);
+  const [watchlistLoading, setWatchlistLoading] = useState(false);
+  const [watchlistMessage, setWatchlistMessage] = useState<string | null>(null);
+  const [watchlistError, setWatchlistError] = useState<string | null>(null);
+
+  const loadWatchlistState = useCallback(async () => {
+    setWatchlistError(null);
+
+    try {
+      const items = await getWatchlist();
+      setWatchlistItem(items.find((item) => item.code === stock.code) ?? null);
+    } catch (err: unknown) {
+      setWatchlistError(err instanceof Error ? err.message : "加载自选股状态失败");
+    }
+  }, [stock.code]);
 
   const loadData = useCallback(
     async (refresh = false) => {
@@ -105,11 +124,20 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
   }, [loadData]);
 
   useEffect(() => {
+    void loadWatchlistState();
+  }, [loadWatchlistState]);
+
+  useEffect(() => {
     let cancelled = false;
+    let inFlight = false;
 
     async function loadLiveQuote() {
+      if (inFlight) {
+        return;
+      }
+      inFlight = true;
       try {
-        const liveQuote = await getStockLiveQuote(stock.code, true);
+        const liveQuote = await getStockLiveQuote(stock.code);
         if (!cancelled) {
           setQuote(liveQuote);
           setLiveQuoteError(null);
@@ -120,6 +148,8 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
             err instanceof Error ? err.message : "实时行情刷新失败",
           );
         }
+      } finally {
+        inFlight = false;
       }
     }
 
@@ -141,6 +171,28 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
       ? "quote-up"
       : "quote-down";
 
+  async function handleToggleWatchlist() {
+    setWatchlistLoading(true);
+    setWatchlistMessage(null);
+    setWatchlistError(null);
+
+    try {
+      if (watchlistItem) {
+        await deleteWatchlistItem(watchlistItem.id);
+        setWatchlistItem(null);
+        setWatchlistMessage(`${stock.name} 已从自选股移除`);
+      } else {
+        const created = await addWatchlistItem(stock.code);
+        setWatchlistItem(created);
+        setWatchlistMessage(`${stock.name} 已加入自选股`);
+      }
+    } catch (err: unknown) {
+      setWatchlistError(err instanceof Error ? err.message : "更新自选股失败");
+    } finally {
+      setWatchlistLoading(false);
+    }
+  }
+
   return (
     <div className="stock-detail">
       <header className="stock-header">
@@ -153,19 +205,31 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
           </p>
           <h1>{stock.name}</h1>
         </div>
-        <button
-          type="button"
-          className="refresh-button"
-          onClick={() => void loadData(true)}
-          disabled={loading || moneyflowLoading}
-        >
-          刷新
-        </button>
+        <div className="stock-header-actions">
+          <button
+            type="button"
+            className={watchlistItem ? "watchlist-active-button" : "refresh-button"}
+            onClick={() => void handleToggleWatchlist()}
+            disabled={watchlistLoading}
+          >
+            {watchlistItem ? "已在自选 · 移除" : "加入自选"}
+          </button>
+          <button
+            type="button"
+            className="refresh-button"
+            onClick={() => void loadData(true)}
+            disabled={loading || moneyflowLoading}
+          >
+            刷新
+          </button>
+        </div>
       </header>
 
       {loading && !quote ? <p className="loading-text">正在加载行情数据...</p> : null}
       {error ? <p className="search-error">{error}</p> : null}
       {liveQuoteError ? <p className="table-note">{liveQuoteError}</p> : null}
+      {watchlistMessage ? <p className="success-text">{watchlistMessage}</p> : null}
+      {watchlistError ? <p className="search-error">{watchlistError}</p> : null}
 
       {quote ? (
         <section className="quote-grid">

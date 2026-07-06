@@ -185,8 +185,16 @@ p {
   margin-bottom: 24px;
 }
 
+.stock-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 .back-button,
-.refresh-button {
+.refresh-button,
+.watchlist-active-button {
   padding: 10px 16px;
   border: 1px solid #334155;
   border-radius: 10px;
@@ -196,11 +204,23 @@ p {
 }
 
 .back-button:hover,
-.refresh-button:hover {
+.refresh-button:hover,
+.watchlist-active-button:hover {
   background: #334155;
 }
 
-.refresh-button:disabled {
+.watchlist-active-button {
+  border-color: #166534;
+  background: #052e16;
+  color: #bbf7d0;
+}
+
+.watchlist-active-button:hover {
+  background: #14532d;
+}
+
+.refresh-button:disabled,
+.watchlist-active-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }

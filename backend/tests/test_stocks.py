@@ -7,12 +7,15 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from backend.app.collectors.realtime_quote_collector import RealtimeQuoteDataSourceError
 from backend.app.database import Base, get_db
 from backend.app.main import app
+from backend.app.services.stock_service import StockService
 
 
 @pytest.fixture
 def client(monkeypatch):
+    StockService._live_quote_cache.clear()
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -97,6 +100,7 @@ def client(monkeypatch):
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+    StockService._live_quote_cache.clear()
 
 
 def test_search_stocks(client: TestClient):
@@ -140,6 +144,92 @@ def test_get_stock_live_quote(client: TestClient):
     assert "quote_time" in payload
     assert payload["is_stale"] is False
     assert payload["cache_age_seconds"] == 0
+
+
+def test_get_stock_live_quote_returns_stale_cache_when_provider_fails(
+    client: TestClient,
+    monkeypatch,
+):
+    calls = {"count": 0}
+
+    def flaky_live_quote(code: str):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            return {
+                "code": code,
+                "name": "贵州茅台",
+                "latest_price": 108.0,
+                "change_amount": 3.0,
+                "change_percent": 2.86,
+                "open": 104.0,
+                "high": 109.0,
+                "low": 103.0,
+                "pre_close": 105.0,
+                "volume": 1500.0,
+                "amount": 150000.0,
+                "turnover_rate": 1.8,
+                "trade_date": date(2026, 7, 2),
+                "quote_time": None,
+                "source": "test_live",
+            }
+        raise RealtimeQuoteDataSourceError("provider down")
+
+    monkeypatch.setattr(
+        "backend.app.services.stock_service.fetch_live_quote",
+        flaky_live_quote,
+    )
+
+    first = client.get("/api/stocks/600519/quote/live", params={"refresh": "true"})
+    second = client.get("/api/stocks/600519/quote/live", params={"refresh": "true"})
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    payload = second.json()
+    assert payload["latest_price"] == 108.0
+    assert payload["is_stale"] is True
+    assert payload["cache_age_seconds"] >= 0
+
+
+def test_get_stock_live_quote_uses_cache_within_ttl(
+    client: TestClient,
+    monkeypatch,
+):
+    calls = {"count": 0}
+
+    def counted_live_quote(code: str):
+        calls["count"] += 1
+        return {
+            "code": code,
+            "name": "贵州茅台",
+            "latest_price": 108.0 + calls["count"],
+            "change_amount": 3.0,
+            "change_percent": 2.86,
+            "open": 104.0,
+            "high": 109.0,
+            "low": 103.0,
+            "pre_close": 105.0,
+            "volume": 1500.0,
+            "amount": 150000.0,
+            "turnover_rate": 1.8,
+            "trade_date": date(2026, 7, 2),
+            "quote_time": None,
+            "source": "test_live",
+        }
+
+    monkeypatch.setattr(
+        "backend.app.services.stock_service.fetch_live_quote",
+        counted_live_quote,
+    )
+
+    first = client.get("/api/stocks/600519/quote/live")
+    second = client.get("/api/stocks/600519/quote/live")
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json()["latest_price"] == 109.0
+    assert second.json()["latest_price"] == 109.0
+    assert second.json()["cache_age_seconds"] >= 0
+    assert calls["count"] == 1
 
 
 def test_get_stock_position(client: TestClient):

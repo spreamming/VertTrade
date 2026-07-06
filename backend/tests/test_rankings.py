@@ -36,7 +36,7 @@ def _stock_frame() -> pd.DataFrame:
             },
         ]
     )
-    frame.attrs["source"] = "akshare_em"
+    frame.attrs["source"] = "akshare_ths"
     return frame
 
 
@@ -59,7 +59,7 @@ def _moneyflow_frame() -> pd.DataFrame:
             },
         ]
     )
-    frame.attrs["source"] = "akshare_em"
+    frame.attrs["source"] = "akshare_ths"
     return frame
 
 
@@ -212,11 +212,8 @@ def test_daily_review_uses_short_lived_cache(monkeypatch):
     assert "排行榜缓存" in second.json()["notes"][-1]
 
 
-def test_stock_spot_rankings_fall_back_to_ths(monkeypatch):
-    def fail_eastmoney(params: dict) -> list[dict]:
-        raise ranking_collector.RankingDataSourceError("em unavailable")
-
-    def fake_ths_page(field: str, order: str) -> pd.DataFrame:
+def test_stock_spot_rankings_use_ths(monkeypatch):
+    def fake_ths_page(field: str, order: str, headers=None) -> pd.DataFrame:
         return pd.DataFrame(
             [
                 {
@@ -238,7 +235,6 @@ def test_stock_spot_rankings_fall_back_to_ths(monkeypatch):
             ]
         )
 
-    monkeypatch.setattr(ranking_collector, "_request_eastmoney", fail_eastmoney)
     monkeypatch.setattr(ranking_collector, "_fetch_ths_stock_page", fake_ths_page)
 
     frame = ranking_collector.fetch_stock_spot_rankings()

@@ -33,7 +33,7 @@ def _items_from_frame(frame: DataFrame, limit: int) -> list[RankingItem]:
 
 
 class RankingService:
-    _STOCK_SOURCE_TIMEOUT_SECONDS = 12
+    _SOURCE_TIMEOUT_SECONDS = 20
     _CACHE_TTL_SECONDS = 60
     _cache: dict[tuple[int, bool], tuple[float, DailyReviewResponse]] = {}
 
@@ -47,19 +47,24 @@ class RankingService:
         if cached is not None:
             return cached
 
-        sector_frame, sector_error = self._load_sector_frame()
-
+        executor = ThreadPoolExecutor(max_workers=3)
+        futures = {
+            "sector": executor.submit(self._load_sector_frame),
+        }
         if include_stock:
-            executor = ThreadPoolExecutor(max_workers=2)
-            try:
-                futures = {
-                    "stock": executor.submit(self._load_stock_frame),
-                    "moneyflow": executor.submit(self._load_moneyflow_frame),
-                }
-                done, _ = wait(
-                    futures.values(),
-                    timeout=self._STOCK_SOURCE_TIMEOUT_SECONDS,
-                )
+            futures["stock"] = executor.submit(self._load_stock_frame)
+            futures["moneyflow"] = executor.submit(self._load_moneyflow_frame)
+        try:
+            done, _ = wait(
+                futures.values(),
+                timeout=self._SOURCE_TIMEOUT_SECONDS,
+            )
+            sector_frame, sector_error = self._future_result(
+                futures["sector"],
+                done,
+                "暂时无法获取板块排行，请稍后重试。",
+            )
+            if include_stock:
                 stock_frame, stock_error = self._future_result(
                     futures["stock"],
                     done,
@@ -70,13 +75,13 @@ class RankingService:
                     done,
                     "暂时无法获取个股资金流排行，请稍后重试。",
                 )
-            finally:
-                executor.shutdown(wait=False, cancel_futures=True)
-        else:
-            stock_frame = None
-            moneyflow_frame = None
-            stock_error = "已按请求跳过全市场个股排行。"
-            moneyflow_error = "已按请求跳过个股资金流排行。"
+            else:
+                stock_frame = None
+                moneyflow_frame = None
+                stock_error = "已按请求跳过全市场个股排行。"
+                moneyflow_error = "已按请求跳过个股资金流排行。"
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
 
         groups: list[RankingGroup] = []
         if include_stock:

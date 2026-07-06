@@ -2,9 +2,9 @@
 
 This file is the independent verification record for agents. It compares what the build agent reported in `AGENT_LOG.md` against the actual repository state, the development plan, and runnable checks.
 
-**Last checked:** 2026-07-06 (ninth run)  
-**Checker scope:** Stage 0 through Phase 7 on remote, Stage 8 realtime market watch MVP local  
-**Reference docs:** `AGENT_LOG.md`, `market_watch_development_plan.md`, `README.md`, `suggestion.md`
+**Last checked:** 2026-07-06 (tenth run)  
+**Checker scope:** Stage 0 through Stage 8 on remote, Stage 9 stability / data-quality / desktop packaging concept MVP local  
+**Reference docs:** `AGENT_LOG.md`, `market_watch_development_plan.md`, `README.md`, `docs/stage9_stability_desktop_packaging.md`, `suggestion.md`
 
 ---
 
@@ -12,20 +12,21 @@ This file is the independent verification record for agents. It compares what th
 
 | Area | Verdict |
 |------|---------|
-| Stage 0 | **PASS** |
-| Phase 1 / stage 1 | **PASS** |
-| Phase 2 / stage 2 | **PASS** |
-| Phase 3 / stage 3 | **PASS** |
-| Phase 4 / stage 4 | **PASS** |
-| Phase 5 / stage 5 | **PASS** |
-| Phase 6 / stage 6 | **PASS** |
-| Phase 7 / stage 7 | **PASS** |
-| Stage 8 realtime market watch MVP | **PASS (local implementation)** |
+| Stage 0 foundation | **PASS** |
+| Phase 1 K-line MVP | **PASS** |
+| Phase 2 watchlist / Dashboard MVP | **PASS** |
+| Phase 3 price-position MVP | **PASS** |
+| Phase 4 individual money-flow MVP | **PASS** |
+| Phase 5 sector MVP | **PASS** |
+| Phase 6 daily review / rankings MVP | **PASS** |
+| Phase 7 ranking click-through / review polish | **PASS** |
+| Stage 8 realtime market watch MVP | **PASS** |
+| Stage 9 stability / docs / desktop concept MVP | **PASS AS DOCUMENTATION + TEST MVP** |
 | Plan alignment | **PASS** |
 | Project boundary (no trading) | **PASS** |
 | Tests / build | **PASS** |
 
-**Overall:** Stage 0 through Phase 7 are complete on the remote branch. The current local stage is Stage 8 realtime market watch MVP, with one late watchlist review-summary enhancement also present locally. Backend tests and frontend typecheck/build pass. Live quote smoke checks for `600519` and `000001` returned 200 with `tencent_live` quotes.
+**Overall:** The project is following the staged plan. Stage 0 through Stage 8 are complete and pushed (`a0b93b4 stage 8`). The current local work is Stage 9: stability, data-quality documentation, stale realtime quote fallback test coverage, and desktop packaging concept documentation. It meets the current Stage 9 MVP expectation, but it is not yet a runnable desktop packaging proof of concept.
 
 ---
 
@@ -34,56 +35,135 @@ This file is the independent verification record for agents. It compares what th
 | Item | Value |
 |------|-------|
 | Branch | `main` |
-| Latest pushed commit | `d679ed8` — `stage 7` |
-| Local checked work | Stage 8 realtime market watch MVP + watchlist review summary |
-| Changed files observed | 13 modified + 2 new files |
+| Latest pushed commit | `a0b93b4` — `stage 8` |
+| Local checked work | Stage 9 stability / data quality / desktop packaging concept |
+| Changed files observed | 4 modified + 1 new docs file |
 
-### Local files observed
+### Local Stage 9 files observed
 
-**Modified:** `AGENT_LOG.md`, `README.md`, `backend/app/api/stock.py`, `backend/app/schemas/stock.py`, `backend/app/services/stock_service.py`, `backend/tests/test_stocks.py`, `frontend/src/api/client.ts`, `frontend/src/components/WatchlistTable.tsx`, `frontend/src/pages/Dashboard.tsx`, `frontend/src/pages/StockDetail.tsx`, `frontend/src/styles.css`, `frontend/src/types/stock.ts`, `market_watch_development_plan.md`
+**Modified:** `AGENT_LOG.md`, `README.md`, `backend/tests/test_stocks.py`, `market_watch_development_plan.md`
 
-**New:** `backend/app/collectors/realtime_quote_collector.py`, `frontend/src/components/WatchlistReviewPanel.tsx`
-
----
-
-## Stage Alignment
-
-| Phase | Plan target | Status |
-|-------|-------------|--------|
-| Phase 0 — Initialization | Backend/frontend startup, health | **COMPLETE** |
-| Phase 1 — K-line MVP | Search, daily K, volume, quote, cache | **COMPLETE** |
-| Phase 2 — Watchlist + Dashboard | Watchlist CRUD and dashboard | **COMPLETE as MVP** |
-| Phase 3 — Price position / top-bottom zone | Score and zone display | **COMPLETE** |
-| Phase 4 — Main money flow | Individual stock money-flow | **COMPLETE as MVP** |
-| Phase 5 — Sector system | Industry sector list/detail | **COMPLETE as MVP** |
-| Phase 6 — Rankings and daily review | Stock/sector rankings | **COMPLETE as MVP** |
-| Phase 7 — Ranking click-through / review polish | Ranking navigation + watchlist summary | **COMPLETE / local summary polish present** |
-| Stage 8 — Realtime market watch | Live quote refresh, watchlist fast refresh | **IMPLEMENTED locally** |
-
-### Stage 8 acceptance criteria
-
-| Criterion | Status |
-|-----------|--------|
-| Live quote collector exists | **PASS** — Tencent first, Eastmoney fallback |
-| Live quote API exists | **PASS** — `/api/stocks/{code}/quote/live` |
-| Live quote cache exists | **PASS** — 3-second in-memory cache |
-| Stock detail refreshes live quote | **PASS** — 3-second polling |
-| Watchlist refreshes live quote | **PASS** — 5-second polling |
-| Provider quote time shown | **PASS** — `quote_time` displayed |
-| Local refresh/cache time shown | **PASS** — `cache_time` displayed |
-| Non-blocking behavior | **PASS** — live quote errors are localized |
-| Minute K / time-sharing chart | **DEFERRED** — correctly left for later |
-| WebSocket/SSE push | **DEFERRED** — polling MVP is acceptable |
+**New:** `docs/stage9_stability_desktop_packaging.md`
 
 ---
 
-## Independent Verification (ninth run)
+## Plan Acceptance Review
+
+### Stage 0: Foundation
+
+| Plan / acceptance item | Status |
+|------------------------|--------|
+| Backend can start | **PASS** |
+| Frontend can start | **PASS** |
+| Frontend can access backend test endpoint | **PASS** |
+| SQLite readiness check | **PASS** |
+
+### Phase 1: Basic quotes and K-line MVP
+
+| Plan / acceptance item | Status |
+|------------------------|--------|
+| Stock search | **PASS** |
+| Daily K-line fetch/cache | **PASS** |
+| K-line chart display | **PASS** |
+| Volume display | **PASS** |
+| Quote summary | **PASS** |
+
+### Phase 2: Watchlist and Dashboard
+
+| Plan / acceptance item | Status |
+|------------------------|--------|
+| Add watchlist item | **PASS** |
+| Delete watchlist item | **PASS** |
+| Watchlist list display | **PASS** |
+| Dashboard watchlist summary | **PASS** |
+| Major index / market breadth overview | **DEFERRED** — acceptable, later market overview work |
+
+### Phase 3: Price-position / top-bottom zone
+
+| Plan / acceptance item | Status |
+|------------------------|--------|
+| 0-100 price-position score | **PASS** |
+| 250 / 750 / 1250 backend windows | **PASS** |
+| Chinese zone labels | **PASS** |
+| Stock detail position display | **PASS** |
+| Watchlist position display | **PASS** |
+| Index position and UI window switching | **DEFERRED** |
+
+### Phase 4: Main money-flow
+
+| Plan / acceptance item | Status |
+|------------------------|--------|
+| Individual stock money-flow API/cache | **PASS** |
+| Main net inflow / ratio | **PASS** |
+| Money-flow bars aligned with K-line | **PASS** |
+| Watchlist money-flow summary | **PASS** |
+| Sector money-flow history chart | **DEFERRED** |
+
+### Phase 5: Sector system
+
+| Plan / acceptance item | Status |
+|------------------------|--------|
+| Industry sector list | **PASS** |
+| Sector constituent detail | **PASS** |
+| Dashboard sector table | **PASS** |
+| Click sector / constituent into detail workflows | **PASS** |
+| Concept / region sector expansion | **DEFERRED** |
+| Sector K-line / historical sector money-flow | **DEFERRED** |
+
+### Phase 6: Rankings and daily review
+
+| Plan / acceptance item | Status |
+|------------------------|--------|
+| Stock gainers / losers | **PASS** |
+| Amount / turnover rankings | **PASS** |
+| Stock money inflow / outflow rankings | **PASS** |
+| Sector gainers / sector money-flow rankings | **PASS** |
+| Dashboard daily review panel | **PASS** |
+| Source failure isolation | **PASS** |
+
+### Phase 7: Review workflow polish / enhancement
+
+| Plan / acceptance item | Status |
+|------------------------|--------|
+| Ranking rows click into stock detail | **PASS** |
+| Sector ranking rows click into sector detail | **PASS** |
+| Sector constituent click-through remains available | **PASS** |
+| Watchlist review summary | **PASS** |
+| AI/news/alerts/backtesting | **NOT STARTED** — correct deferral |
+
+### Stage 8: Realtime market watch MVP
+
+| Plan / acceptance item | Status |
+|------------------------|--------|
+| Near-realtime stock quote collector | **PASS** — Tencent first, Eastmoney fallback |
+| `/api/stocks/{code}/quote/live` | **PASS** |
+| 3-second stock detail polling | **PASS** |
+| 5-second watchlist polling | **PASS** |
+| Quote-time and local refresh-time display | **PASS** |
+| Stale/cache metadata | **PASS** |
+| Minute K / time-sharing chart | **DEFERRED** |
+| WebSocket/SSE push | **DEFERRED** |
+
+### Stage 9: Stability, tests, data quality, desktop concept
+
+| Plan / acceptance item | Status |
+|------------------------|--------|
+| Realtime stale-cache fallback test | **PASS** |
+| Data quality fields documented | **PASS** |
+| Watchlist polling limit documented | **PASS** |
+| Desktop packaging comparison | **PASS** — Tauri vs Electron concept doc |
+| Local launcher / desktop shell concept direction | **PASS** |
+| Actual desktop packaging prototype | **NOT IMPLEMENTED** — acceptable for current concept MVP, next step |
+
+---
+
+## Independent Verification (tenth run)
 
 ### Commands run
 
 | Check | Result |
 |-------|--------|
-| `.venv/bin/python -m pytest backend/tests/ -q` | **PASS** — 39 passed |
+| `.venv/bin/python -m pytest backend/tests/ -q` | **PASS** — 40 passed |
 | `npx tsc --noEmit` | **PASS** |
 | `npm run build` | **PASS** |
 | Live `GET /api/stocks/600519/quote/live?refresh=true` | **PASS** — 200 OK |
@@ -92,12 +172,10 @@ This file is the independent verification record for agents. It compares what th
 
 ### Live quote smoke results
 
-| Code | Result | Source | Quote Time |
-|------|--------|--------|------------|
-| `600519` | 200 OK, latest price returned | `tencent_live` | `2026-07-06T15:18:52` |
-| `000001` | 200 OK, latest price returned | `tencent_live` | `2026-07-06T15:18:45` |
-
-Both responses included `is_live=true`, `quote_time`, and `cache_time`.
+| Code | Result | Source | Stale | Cache Age | Quote Time |
+|------|--------|--------|-------|-----------|------------|
+| `600519` | 200 OK | `tencent_live` | `false` | `0.0` | `2026-07-06T15:42:23` |
+| `000001` | 200 OK | `tencent_live` | `false` | `0.0` | `2026-07-06T15:42:21` |
 
 ### Daily review smoke result
 
@@ -114,36 +192,17 @@ The daily review endpoint returned 8 groups, all populated:
 | `sector_gainers` | 5 | `akshare_em` | None |
 | `sector_moneyflow` | 5 | `akshare_em` | None |
 
-### Backend verification
+### Stage 9 implementation verification
 
 | Check | Result |
 |-------|--------|
-| Realtime collector exists | **PASS** |
-| Tencent quote path exists | **PASS** |
-| Eastmoney fallback path exists | **PASS** |
-| Live quote endpoint mounted | **PASS** |
-| `StockQuote` includes source/live/cache/quote time fields | **PASS** |
-| Tests cover live quote endpoint | **PASS** |
-
-### Frontend verification
-
-| Check | Result |
-|-------|--------|
-| Stock detail polls live quote every 3 seconds | **PASS** |
-| Watchlist polls live quotes every 5 seconds | **PASS** |
-| Watchlist merges full live quote payload | **PASS** |
-| UI uses “近实时” wording | **PASS** |
-| Quote time and refresh time shown | **PASS** |
-| Watchlist review summary exists | **PASS** |
-
-### Project boundary
-
-| Check | Expected | Result |
-|-------|----------|--------|
-| Brokerage login | Absent | **PASS** |
-| Order placement | Absent | **PASS** |
-| Auto-trading | Absent | **PASS** |
-| Credential storage | Absent | **PASS** |
+| `test_get_stock_live_quote_returns_stale_cache_when_provider_fails` exists | **PASS** |
+| Test clears shared live quote cache around stock tests | **PASS** |
+| `README.md` mentions Stage 9 current stage and doc | **PASS** |
+| `market_watch_development_plan.md` has Phase 9 section | **PASS** |
+| `docs/stage9_stability_desktop_packaging.md` exists | **PASS** |
+| Tauri / Electron directions compared | **PASS** |
+| No brokerage / order / auto-trading scope introduced | **PASS** |
 
 ---
 
@@ -151,39 +210,34 @@ The daily review endpoint returned 8 groups, all populated:
 
 ### Medium priority
 
-1. **Provider wording in roadmap/README is slightly stale**
-   - The implementation now prefers Tencent live quotes with Eastmoney fallback.
-   - `market_watch_development_plan.md` still says realtime uses Eastmoney single-stock quote in one Stage 8 status line.
-   - `README.md` current flow is still behind the current app capabilities.
+1. **Stage 9 is documentation/test MVP, not executable desktop POC**
+   - The current Stage 9 output is useful and aligned with the plan.
+   - The next step should be an actual local launcher script or desktop shell proof of concept if the project wants to advance packaging.
 
-2. **Watchlist live polling can become expensive**
-   - Dashboard refreshes every watchlist item every 5 seconds.
-   - This is acceptable for a small personal watchlist, but should be capped/batched/backed off before larger lists.
+2. **README current flow is still slightly high-level**
+   - It points to Stage 9 docs, but the current app flow could better summarize Stage 0-8 capabilities in grouped sections.
 
-3. **No user-visible stale/fallback status**
-   - Backend returns cached live quotes if provider refresh fails and cache exists.
-   - UI shows `cache_time`, but does not clearly distinguish “fresh provider response” from “stale cached fallback.”
+3. **Realtime browser behavior is still not automated**
+   - Backend tests cover stale fallback.
+   - Frontend polling behavior still relies on manual or build-level verification.
 
-4. **No frontend interaction test for realtime UI**
-   - Backend tests and build pass.
-   - There is no browser/interaction test for 3-second stock detail polling or 5-second watchlist refresh.
+4. **Stage numbering mixes Phase / Stage wording**
+   - Historical docs use both `Phase` and `Stage`.
+   - This is understandable but should be normalized before packaging docs grow further.
 
 ### Low priority
 
-5. **Minute K / time-sharing chart is not implemented**
-   - This is already marked as future work and should not block Stage 8 MVP.
-
-6. **In-memory live quote cache is process-local**
-   - Acceptable for local desktop MVP.
-   - If multiple backend processes are introduced later, cache behavior will differ per process.
+5. **Desktop docs do not choose a final shell**
+   - Current recommendation is “local launcher first, then evaluate Electron/Tauri.”
+   - This is reasonable now; final choice can wait until a launcher proof is tested.
 
 ---
 
 ## Checker Verdict
 
-**Rating: GOOD — current stage is Stage 8 realtime market watch MVP and it is on plan.**
+**Rating: GOOD — current local Stage 9 follows the plan and satisfies the current acceptance expectation.**
 
-The implementation adds practical near-realtime quote observation while preserving the no-trading boundary. It correctly uses “近实时” wording, exposes provider quote time and local refresh time, and keeps historical K-line/position/money-flow features separate from live quote failures.
+The project has not skipped ahead into out-of-scope trading features. The sequence is coherent: core watch/K-line → watchlist → price position → money-flow → sectors/rankings → realtime quotes → stability/data-quality/desktop concept. Earlier stage gaps are either already addressed or explicitly deferred in the plan.
 
 ---
 
@@ -200,3 +254,4 @@ The implementation adds practical near-realtime quote observation while preservi
 | 2026-07-03 (7th) | Stage 0-5 remote + Phase 6 local | PASS | 37 tests pass; daily review live OK with 8/8 groups |
 | 2026-07-06 (8th) | Stage 0-6 remote + Phase 7 local | PASS | 38 tests pass; ranking click-through wiring verified |
 | 2026-07-06 (9th) | Stage 0-7 remote + Stage 8 local | PASS | 39 tests pass; realtime live quote smoke OK |
+| 2026-07-06 (10th) | Stage 0-8 remote + Stage 9 local | PASS | 40 tests pass; stability/docs MVP checked |

@@ -46,7 +46,7 @@ VertTrade/
 
 ## Current Stage
 
-Stage 0 through Phase 7 are complete. Stage 8 (real-time market watch MVP) is now implemented locally as a first version.
+Stage 0 through Stage 8 are complete. Stage 9 (stability, data quality, and desktop packaging concept) is now implemented locally.
 
 You can:
 
@@ -65,18 +65,19 @@ You can:
 13. Open an industry sector detail page and inspect constituent stocks.
 14. Jump from a sector constituent directly into the stock detail page.
 15. View a daily review panel with stock and sector rankings.
-16. See stock ranking fallbacks through direct Eastmoney requests and Tonghuashun pages when provider APIs are unstable.
+16. Review stock and sector rankings with a consistent Tonghuashun ranking source.
 17. Click stock ranking rows to open stock detail pages.
 18. Click sector ranking rows to open sector detail pages.
 19. Review a watchlist summary with high/low position counts, money-flow counts, and strongest/weakest watchlist names.
 20. Use near-real-time quote refresh on stock detail pages.
 21. See lightweight near-real-time price and change-percent refresh in the watchlist table, including provider quote time and local refresh time.
+22. Review Stage 9 stability and desktop packaging notes in `docs/stage9_stability_desktop_packaging.md`.
 
 Next target:
 
 1. Add minute K-line and time-sharing chart.
-2. Major index and market overview data for the Dashboard.
-3. Broader price-position support for indices and additional windows in the UI.
+2. Prototype desktop shell startup around the local backend/frontend.
+3. Major index and market overview data for the Dashboard.
 
 ## Local Setup
 
@@ -88,7 +89,15 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Start the backend from the repository root:
+Start the local app with the launcher:
+
+```bash
+.venv/bin/python scripts/start_local.py
+```
+
+The launcher checks ports `8000` and `5173`, starts missing services, and prints the local URLs.
+
+Or start the backend manually from the repository root:
 
 ```bash
 uvicorn backend.app.main:app --reload
@@ -100,7 +109,7 @@ The backend health endpoint is available at:
 http://127.0.0.1:8000/api/health
 ```
 
-Install and start the frontend:
+Install and start the frontend manually:
 
 ```bash
 cd frontend
@@ -112,14 +121,35 @@ The Vite dev server proxies `/api` to `http://127.0.0.1:8000`. `VITE_API_BASE_UR
 
 ## Current App Flow
 
-1. Open `http://127.0.0.1:5173`.
-2. Search by A-share code or name.
-3. Add search results to the local watchlist from the Dashboard.
-4. Open a stock detail page from either search results or the watchlist.
-5. Review latest quote summary, daily K-line, and volume.
-6. Delete stocks from the watchlist when no longer needed.
+Open `http://127.0.0.1:5173`.
 
-The Dashboard currently focuses on the watchlist MVP. Major indices, market breadth, turnover, and richer market overview data are planned later.
+Core stock flow:
+
+1. Search by A-share code or name.
+2. Open a stock detail page.
+3. Review near-realtime quote, daily K-line, price position, and money-flow bars.
+
+Watchlist flow:
+
+1. Add or delete local watchlist items from the Dashboard.
+2. Watchlist prices and change-percent fields refresh with near-realtime quotes.
+3. Review the watchlist summary for high/low position and money-flow focus.
+
+Dashboard flow:
+
+1. Review daily ranking cards for stock and sector strength.
+2. Click ranking rows into stock or sector detail pages.
+3. Review industry sectors and open sector constituents.
+
+Realtime flow:
+
+1. Stock detail polls near-realtime quotes every 3 seconds.
+2. Watchlist refreshes the first 20 rows every 5 seconds.
+3. Quote time, refresh time, stale/cache status are displayed so provider freshness is visible.
+
+Stability / desktop preparation:
+
+- See `docs/stage9_stability_desktop_packaging.md`.
 
 ## Verification
 

@@ -55,7 +55,7 @@ Older pushed commits before `dd0b997` may still contain Cursor co-author trailer
 - GitHub repo: `https://github.com/spreamming/VertTrade.git`
 - Local branch: `main`
 - Remote: `origin`
-- Latest pushed commit on `main`: `d679ed8 stage 7`
+- Latest pushed commit on `main`: `a0b93b4 stage 8`
 - Correct Git identity for commits: `spreamming <fredspream@gmail.com>`
 - Repo-local Git identity is configured in `.git/config` so future commits in this repo use the correct author.
 
@@ -80,7 +80,7 @@ Initial scaffold already created:
 
 Dependencies have been installed locally.
 
-Stage 0 through Phase 7 are complete and pushed. Stage 8 realtime market watch MVP is ready to commit as stage 8.
+Stage 0 through Stage 8 are complete and pushed.
 
 Current verification commands have passed:
 
@@ -161,3 +161,18 @@ Current verification commands have passed:
 - Fixed Stage 8 Dashboard realtime behavior: watchlist live refresh now merges the full live quote payload, so latest price, change amount/percent, trade date, and watchlist review summary all update from realtime data rather than only replacing the latest price. Verified 39 backend tests and frontend typecheck/build.
 - Improved Stage 8 quote freshness accuracy: live quote collector now prefers Tencent quote data with provider quote time and uses Eastmoney as fallback; UI displays both provider quote time and local refresh time, uses “近实时” wording, and polling requests `refresh=true` to avoid confusing backend cache with source freshness. Verified 39 backend tests and frontend typecheck/build.
 - Applied Stage 8 checker suggestions: live quote responses now include `is_stale` and `cache_age_seconds`; UI distinguishes “近实时” from “缓存行情”; Dashboard caps automatic watchlist live refresh to the first 20 rows and merges full live quote fields into the table and watchlist review summary. Updated README/plan wording to Tencent-first with Eastmoney fallback. Verified backend tests and frontend typecheck/build.
+- Implemented Stage 9 stability/documentation MVP: added backend test coverage for stale realtime quote cache fallback, documented data-quality/staleness expectations, and added `docs/stage9_stability_desktop_packaging.md` comparing Tauri/Electron packaging directions and recommending a local launcher/desktop shell concept path. Verified backend tests and frontend typecheck/build.
+- Applied Stage 9 checker suggestions: added `scripts/start_local.py` local launcher with dependency and port checks, updated README current app flow into grouped sections, and updated Stage 9 docs/plan to describe the launcher path. Launcher syntax check, backend tests, and frontend typecheck/build pass.
+- Fixed backend crash caused by concurrent Tonghuashun provider calls: AKShare Tonghuashun adapters use `py_mini_racer`, which can fatal-crash when initialized concurrently. Added a global `THS_PROVIDER_LOCK` and serialized Tonghuashun sector/ranking calls. Restarted backend; `/api/health`, `/api/dashboard`, `/api/sectors/industries`, and daily review smoke checks respond again. Backend tests and frontend typecheck/build pass.
+- Hardened Dashboard loading behavior after user reported intermittent infinite loading: live quote polling no longer bypasses backend cache or overlaps requests; same-stock live quote fetches are serialized in the backend; industry sector and ranking providers now have short timeout guards and cache fallback where available. Endpoints now return within bounded time with data or localized per-section errors instead of hanging.
+- Improved Dashboard resilience for flaky sector/ranking providers: frontend now stores the last successful industry-sector and daily-review responses in localStorage, merges failed ranking groups with previous successful groups, and shows a small "已显示上次成功数据" message instead of replacing whole sections with provider errors. Verified backend tests and frontend typecheck/build.
+- Fixed first four ranking groups repeatedly failing to load: stock spot rankings now prefer lightweight Eastmoney direct requests and use a faster Tonghuashun fallback limited to currently stable pages when Eastmoney is unavailable. API smoke now returns items for stock gainers, losers, amount, and turnover groups instead of error cards; backend tests pass.
+- Added stale-while-revalidate behavior for Dashboard sectors and rankings: when refresh fails, the UI keeps the last successful data and starts a 15-second background retry loop; successful retry automatically replaces the displayed data and clears the warning. Verified backend tests and frontend typecheck/build.
+- Added stock-detail watchlist management: any stock opened from rankings, sectors, search, or watchlist now checks whether it is already in the local watchlist; the detail header shows "加入自选" or "已在自选 · 移除" and updates the watchlist via existing APIs. Verified backend tests and frontend typecheck/build.
+- Committed and pushed `a0b93b4 stage 8` without any `Co-authored-by` trailer (recreated via `commit-tree` after Cursor injected co-author on first attempt). Verified 39 backend tests, frontend typecheck, and push to `origin/main`.
+- Improved Dashboard remount behavior for watchlist sections: Dashboard now initializes watchlist data and watchlist review summary from the last successful localStorage cache, then refreshes in the background and replaces data when available. Returning from stock/sector detail no longer forces watchlist/review sections into full loading. Verified backend tests and frontend typecheck/build.
+- Improved stock detail reliability for stocks opened from rankings: daily K-line now falls back to Tencent historical daily data when AKShare/Eastmoney history fails, and money-flow fetches have a direct Eastmoney fallback plus graceful empty-data UI. Smoke test for `688008` returned K-line and money-flow data; backend tests and frontend typecheck/build pass.
+- Improved Dashboard return navigation after Stage 8: ranking and sector sections now initialize from localStorage last-success data immediately when Dashboard remounts, then refresh in the background and replace displayed data when fresh results arrive. This avoids full-section loading after returning from stock/sector detail. Verified backend tests and frontend typecheck/build.
+- Unified ranking provider policy after user questioned cross-provider inconsistencies: stock/sector rankings now use Tonghuashun only, removing Eastmoney as a ranking fallback to avoid changing ranking universe/sort semantics between refreshes. Eastmoney remains available for live quote/detail fallback but not ranking composition. Backend tests and frontend typecheck/build pass.
+- Fixed sector detail Internal Server Error from Tonghuashun constituent fields: THS can return `"--"` for numeric fields such as dynamic PE, so sector collector now normalizes non-numeric values to `None` before Pydantic validation. Smoke test for `生物制品` returned 20 constituents; backend tests and frontend typecheck/build pass.
+- Improved sector detail UX after user reported missing turnover/market-cap and slow constituents: sector detail now displays `成交额` when market value is unavailable and `主力净流入` instead of forcing missing turnover/market-value fields; constituents initialize from localStorage last-success cache and refresh in the background. Backend tests and frontend typecheck/build pass.

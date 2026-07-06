@@ -1,9 +1,11 @@
 import akshare as ak
 import pandas as pd
 import requests
+import time
 from io import StringIO
 
 from ..utils.network import without_system_proxy
+from ..utils.provider_locks import THS_PROVIDER_LOCK
 
 
 class SectorDataSourceError(RuntimeError):
@@ -59,6 +61,24 @@ THS_SUMMARY_COLUMNS = {
     "领涨股-涨跌幅",
 }
 
+_SECTOR_CACHE_TTL_SECONDS = 60
+_industry_sector_cache: tuple[float, pd.DataFrame] | None = None
+
+
+def _get_cached_industry_sectors() -> pd.DataFrame | None:
+    if _industry_sector_cache is None:
+        return None
+    cached_at, frame = _industry_sector_cache
+    if time.monotonic() - cached_at > _SECTOR_CACHE_TTL_SECONDS:
+        return None
+    return frame.copy()
+
+
+def _set_cached_industry_sectors(frame: pd.DataFrame) -> pd.DataFrame:
+    global _industry_sector_cache
+    _industry_sector_cache = (time.monotonic(), frame.copy())
+    return frame
+
 
 def _validate_columns(frame: pd.DataFrame, required: set[str], label: str) -> None:
     missing_columns = required.difference(frame.columns)
@@ -96,7 +116,25 @@ def _parse_chinese_amount(value: object) -> float | None:
         return None
 
 
+def _parse_float(value: object) -> float | None:
+    if value is None or pd.isna(value):
+        return None
+    text = str(value).strip().replace(",", "")
+    if text in {"", "--", "-"}:
+        return None
+    if text.endswith("%"):
+        text = text[:-1]
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
 def fetch_industry_sectors() -> pd.DataFrame:
+    cached = _get_cached_industry_sectors()
+    if cached is not None:
+        return cached
+
     try:
         with without_system_proxy():
             frame = ak.stock_board_industry_name_em()
@@ -144,13 +182,22 @@ def fetch_industry_sectors() -> pd.DataFrame:
         ]
     ]
     result.attrs["source"] = "akshare_em"
-    return result
+    return _set_cached_industry_sectors(result)
 
 
 def fetch_industry_sectors_ths() -> pd.DataFrame:
-    with without_system_proxy():
-        summary = ak.stock_board_industry_summary_ths()
-        names = ak.stock_board_industry_name_ths()
+    cached = _get_cached_industry_sectors()
+    if cached is not None:
+        return cached
+
+    with THS_PROVIDER_LOCK:
+        cached = _get_cached_industry_sectors()
+        if cached is not None:
+            return cached
+
+        with without_system_proxy():
+            summary = ak.stock_board_industry_summary_ths()
+            names = ak.stock_board_industry_name_ths()
 
     if summary.empty:
         summary.attrs["source"] = "akshare_ths"
@@ -199,7 +246,7 @@ def fetch_industry_sectors_ths() -> pd.DataFrame:
         ]
     ]
     result.attrs["source"] = "akshare_ths"
-    return result
+    return _set_cached_industry_sectors(result)
 
 
 def fetch_industry_constituents(symbol: str) -> pd.DataFrame:
@@ -249,8 +296,9 @@ def fetch_industry_constituents(symbol: str) -> pd.DataFrame:
 
 
 def fetch_industry_constituents_ths(symbol: str) -> pd.DataFrame:
-    with without_system_proxy():
-        names = ak.stock_board_industry_name_ths()
+    with THS_PROVIDER_LOCK:
+        with without_system_proxy():
+            names = ak.stock_board_industry_name_ths()
 
     if {"name", "code"}.difference(names.columns):
         raise SectorDataSourceError("同花顺行业板块数据源缺少字段：name、code")
@@ -265,8 +313,9 @@ def fetch_industry_constituents_ths(symbol: str) -> pd.DataFrame:
 
     url = f"http://q.10jqka.com.cn/thshy/detail/code/{ths_code}/"
     headers = {"User-Agent": "Mozilla/5.0"}
-    with without_system_proxy():
-        response = requests.get(url, headers=headers, timeout=15)
+    with THS_PROVIDER_LOCK:
+        with without_system_proxy():
+            response = requests.get(url, headers=headers, timeout=15)
     response.raise_for_status()
 
     tables = pd.read_html(StringIO(response.text))
@@ -292,6 +341,8 @@ def fetch_industry_constituents_ths(symbol: str) -> pd.DataFrame:
     renamed["code"] = renamed["code"].astype(str).str.zfill(6)
     renamed["exchange"] = renamed["code"].map(_exchange_for_code)
     renamed["amount"] = renamed["amount"].map(_parse_chinese_amount)
+    for column in ["latest_price", "change_amount", "change_percent", "turnover_rate", "pe_dynamic"]:
+        renamed[column] = renamed[column].map(_parse_float)
     renamed["volume"] = None
     renamed["pb"] = None
 
