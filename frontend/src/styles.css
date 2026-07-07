@@ -446,6 +446,29 @@ p {
   margin-bottom: 16px;
 }
 
+.period-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.period-switcher button {
+  padding: 8px 10px;
+  border: 1px solid #334155;
+  border-radius: 999px;
+  background: #111827;
+  color: #cbd5e1;
+  cursor: pointer;
+}
+
+.period-switcher button:hover,
+.period-switcher .period-active {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.14);
+  color: #f8fafc;
+}
+
 .big-number {
   margin: 0;
   color: #f8fafc;

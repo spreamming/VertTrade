@@ -107,6 +107,16 @@ export async function getStockKline(
   );
 }
 
+export async function getStockIntradayKline(
+  code: string,
+  period = "1m",
+): Promise<KlineResponse> {
+  const params = new URLSearchParams({ period });
+  return request<KlineResponse>(
+    `/api/stocks/${code}/kline/minute?${params.toString()}`,
+  );
+}
+
 export async function getStockQuote(
   code: string,
   refresh = false,

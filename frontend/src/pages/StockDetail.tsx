@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   addWatchlistItem,
   deleteWatchlistItem,
   getStockKline,
+  getStockIntradayKline,
   getStockLiveQuote,
   getStockMoneyflow,
   getStockPosition,
@@ -24,6 +25,15 @@ type StockDetailProps = {
   stock: StockSummary;
   onBack: () => void;
 };
+
+const KLINE_PERIODS = [
+  { value: "daily", label: "日 K" },
+  { value: "1m", label: "1 分" },
+  { value: "5m", label: "5 分" },
+  { value: "15m", label: "15 分" },
+  { value: "30m", label: "30 分" },
+  { value: "60m", label: "60 分" },
+];
 
 function formatNumber(value: number | null | undefined, digits = 2): string {
   if (value === null || value === undefined) {
@@ -52,11 +62,15 @@ function formatCacheAge(value: number | null | undefined): string {
 }
 
 export function StockDetail({ stock, onBack }: StockDetailProps) {
+  const didInitialKlineLoadRef = useRef(false);
   const [quote, setQuote] = useState<StockQuote | null>(null);
   const [kline, setKline] = useState<KlineResponse | null>(null);
+  const [klinePeriod, setKlinePeriod] = useState("daily");
   const [position, setPosition] = useState<StockPosition | null>(null);
   const [moneyflow, setMoneyflow] = useState<MoneyflowResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [klineLoading, setKlineLoading] = useState(false);
+  const [positionLoading, setPositionLoading] = useState(false);
   const [moneyflowLoading, setMoneyflowLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [moneyflowError, setMoneyflowError] = useState<string | null>(null);
@@ -77,19 +91,16 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
     }
   }, [stock.code]);
 
-  const loadData = useCallback(
+  const loadKline = useCallback(
     async (refresh = false) => {
-      setLoading(true);
+      setKlineLoading(true);
       setError(null);
-      setMoneyflowLoading(true);
-      setMoneyflowError(null);
-      setMoneyflow(null);
 
       try {
-        const [klineData, positionData] = await Promise.all([
-          getStockKline(stock.code, refresh),
-          getStockPosition(stock.code, 250, refresh),
-        ]);
+        const klineData =
+          klinePeriod === "daily"
+            ? await getStockKline(stock.code, refresh)
+            : await getStockIntradayKline(stock.code, klinePeriod);
         const quoteData = buildQuoteFromKline(stock, klineData.bars);
 
         if (!quoteData) {
@@ -98,12 +109,35 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
 
         setQuote(quoteData);
         setKline(klineData);
-        setPosition(positionData);
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "加载个股数据失败");
+        setError(err instanceof Error ? err.message : "加载 K 线数据失败");
       } finally {
-        setLoading(false);
+        setKlineLoading(false);
       }
+    },
+    [klinePeriod, stock.code],
+  );
+
+  const loadPosition = useCallback(
+    async (refresh = false) => {
+      setPositionLoading(true);
+
+      try {
+        setPosition(await getStockPosition(stock.code, 250, refresh));
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "加载价格位置失败");
+      } finally {
+        setPositionLoading(false);
+      }
+    },
+    [stock.code],
+  );
+
+  const loadMoneyflow = useCallback(
+    async (refresh = false) => {
+      setMoneyflowLoading(true);
+      setMoneyflowError(null);
+      setMoneyflow(null);
 
       try {
         const moneyflowData = await getStockMoneyflow(stock.code, refresh);
@@ -119,9 +153,29 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
     [stock.code],
   );
 
+  async function loadAllData(refresh = false) {
+    setLoading(true);
+    await Promise.all([
+      loadKline(refresh),
+      loadPosition(refresh),
+      loadMoneyflow(refresh),
+    ]);
+    setLoading(false);
+  }
+
   useEffect(() => {
-    void loadData();
-  }, [loadData]);
+    void loadAllData();
+    // Initial stock load only; period changes are handled by the kline-only effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stock.code]);
+
+  useEffect(() => {
+    if (!didInitialKlineLoadRef.current) {
+      didInitialKlineLoadRef.current = true;
+      return;
+    }
+    void loadKline(false);
+  }, [loadKline]);
 
   useEffect(() => {
     void loadWatchlistState();
@@ -217,7 +271,7 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
           <button
             type="button"
             className="refresh-button"
-            onClick={() => void loadData(true)}
+            onClick={() => void loadAllData(true)}
             disabled={loading || moneyflowLoading}
           >
             刷新
@@ -225,7 +279,7 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
         </div>
       </header>
 
-      {loading && !quote ? <p className="loading-text">正在加载行情数据...</p> : null}
+      {(loading || klineLoading) && !quote ? <p className="loading-text">正在加载行情数据...</p> : null}
       {error ? <p className="search-error">{error}</p> : null}
       {liveQuoteError ? <p className="table-note">{liveQuoteError}</p> : null}
       {watchlistMessage ? <p className="success-text">{watchlistMessage}</p> : null}
@@ -284,12 +338,36 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
         </section>
       ) : null}
 
-      <PositionCard position={position} loading={loading} />
+      <PositionCard position={position} loading={loading || positionLoading} />
 
       {kline && kline.bars.length > 0 ? (
         <section className="chart-panel">
-          <h2>日 K 线 / 成交量 / 主力资金流</h2>
-          <KLineChart bars={kline.bars} moneyflowBars={moneyflow?.bars ?? []} />
+          <div className="section-header">
+            <div>
+              <h2>{klinePeriod === "daily" ? "日 K 线" : "分钟 K 线"}</h2>
+              <p className="section-copy">
+                {klinePeriod === "daily"
+                  ? "日 K 线下方显示成交量和主力资金流。"
+                  : "分钟 K 用于盘中观察，当前先显示价格和成交量。"}
+              </p>
+            </div>
+            <div className="period-switcher">
+              {KLINE_PERIODS.map((period) => (
+                <button
+                  key={period.value}
+                  type="button"
+                  className={period.value === klinePeriod ? "period-active" : ""}
+                  onClick={() => setKlinePeriod(period.value)}
+                >
+                  {period.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <KLineChart
+            bars={kline.bars}
+            moneyflowBars={klinePeriod === "daily" ? moneyflow?.bars ?? [] : []}
+          />
         </section>
       ) : null}
 

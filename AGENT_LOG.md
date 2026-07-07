@@ -55,7 +55,7 @@ Older pushed commits before `dd0b997` may still contain Cursor co-author trailer
 - GitHub repo: `https://github.com/spreamming/VertTrade.git`
 - Local branch: `main`
 - Remote: `origin`
-- Latest pushed commit on `main`: `a0b93b4 stage 8`
+- Latest pushed commit on `main`: `eae9401 small fix before encapsulation`
 - Correct Git identity for commits: `spreamming <fredspream@gmail.com>`
 - Repo-local Git identity is configured in `.git/config` so future commits in this repo use the correct author.
 
@@ -80,7 +80,7 @@ Initial scaffold already created:
 
 Dependencies have been installed locally.
 
-Stage 0 through Stage 8 are complete and pushed.
+Stage 0 through Stage 9 stability baseline are complete and pushed (`eae9401`). Path B minute K-line MVP is implemented locally and ready to commit.
 
 Current verification commands have passed:
 
@@ -176,3 +176,8 @@ Current verification commands have passed:
 - Unified ranking provider policy after user questioned cross-provider inconsistencies: stock/sector rankings now use Tonghuashun only, removing Eastmoney as a ranking fallback to avoid changing ranking universe/sort semantics between refreshes. Eastmoney remains available for live quote/detail fallback but not ranking composition. Backend tests and frontend typecheck/build pass.
 - Fixed sector detail Internal Server Error from Tonghuashun constituent fields: THS can return `"--"` for numeric fields such as dynamic PE, so sector collector now normalizes non-numeric values to `None` before Pydantic validation. Smoke test for `生物制品` returned 20 constituents; backend tests and frontend typecheck/build pass.
 - Improved sector detail UX after user reported missing turnover/market-cap and slow constituents: sector detail now displays `成交额` when market value is unavailable and `主力净流入` instead of forcing missing turnover/market-value fields; constituents initialize from localStorage last-success cache and refresh in the background. Backend tests and frontend typecheck/build pass.
+- Committed and pushed `eae9401 small fix before encapsulation` without any `Co-authored-by` trailer (recreated via `commit-tree` after Cursor injected co-author on first attempt). Verified 41 backend tests, frontend typecheck, and push to `origin/main`.
+- Updated `CHECKER_LOG.md` and `suggestion.md` with a pre-desktop-packaging gap review: Stage 0-9 MVP is usable, but Stage 10 shell packaging, minute K-line, time-sharing chart, market overview, and several planned analysis enhancements remain unfinished before desktop encapsulation.
+- Began Path B before desktop packaging: implemented minute K-line MVP with `intraday_kline_collector.py`, `/api/stocks/{code}/kline/minute`, and stock detail period switcher for 日 K / 1 分 / 5 分 / 15 分 / 30 分 / 60 分. Minute K uses Sina via AKShare first and Eastmoney as fallback; Tencent minute K was probed but SSL-unstable. Backend tests now 42 pass and frontend typecheck/build pass. Time-sharing chart remains next.
+- Fixed minute K chart blank-screen crash: Lightweight Charts only accepts `YYYY-MM-DD` string times, so intraday `YYYY-MM-DD HH:mm:ss` values are now converted to Unix timestamps before `setData`. Frontend typecheck/build and backend tests pass.
+- Applied minute K checker suggestions: unsupported minute periods now return HTTP 400 with a clear Chinese validation message, and stock detail period switching reloads only K-line data instead of reloading daily price position/money-flow. Backend tests now 43 pass and frontend typecheck/build pass.

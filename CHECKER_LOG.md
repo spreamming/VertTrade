@@ -2,8 +2,8 @@
 
 This file is the independent verification record for agents. It compares what the build agent reported in `AGENT_LOG.md` against the actual repository state, the development plan, and runnable checks.
 
-**Last checked:** 2026-07-06 (tenth run)  
-**Checker scope:** Stage 0 through Stage 8 on remote, Stage 9 stability / data-quality / desktop packaging concept MVP local  
+**Last checked:** 2026-07-07 (twelfth run)  
+**Checker scope:** Stage 0 through Stage 9 baseline, current local pre-desktop Path B minute K-line MVP  
 **Reference docs:** `AGENT_LOG.md`, `market_watch_development_plan.md`, `README.md`, `docs/stage9_stability_desktop_packaging.md`, `suggestion.md`
 
 ---
@@ -21,12 +21,13 @@ This file is the independent verification record for agents. It compares what th
 | Phase 6 daily review / rankings MVP | **PASS** |
 | Phase 7 ranking click-through / review polish | **PASS** |
 | Stage 8 realtime market watch MVP | **PASS** |
-| Stage 9 stability / docs / desktop concept MVP | **PASS AS DOCUMENTATION + TEST MVP** |
+| Stage 9 stability / docs / desktop concept MVP | **PASS** |
+| Current minute K-line MVP | **PASS WITH PARAMETER-HANDLING GAP** |
 | Plan alignment | **PASS** |
 | Project boundary (no trading) | **PASS** |
 | Tests / build | **PASS** |
 
-**Overall:** The project is following the staged plan. Stage 0 through Stage 8 are complete and pushed (`a0b93b4 stage 8`). The current local work is Stage 9: stability, data-quality documentation, stale realtime quote fallback test coverage, and desktop packaging concept documentation. It meets the current Stage 9 MVP expectation, but it is not yet a runnable desktop packaging proof of concept.
+**Overall:** Builder’s latest update is not desktop encapsulation yet; it is the planned pre-desktop Path B enhancement: minute K-line support. This follows the plan because minute K / intraday observation was explicitly deferred from Stage 8 and is a high-value watch-terminal feature before final desktop packaging. The implementation passes backend tests, frontend typecheck/build, and live smoke for 1/5/15/30/60-minute periods. One issue remains: unsupported minute periods currently return a generic 503 data-source error instead of a 400 validation error.
 
 ---
 
@@ -35,209 +36,151 @@ This file is the independent verification record for agents. It compares what th
 | Item | Value |
 |------|-------|
 | Branch | `main` |
-| Latest pushed commit | `a0b93b4` — `stage 8` |
-| Local checked work | Stage 9 stability / data quality / desktop packaging concept |
-| Changed files observed | 4 modified + 1 new docs file |
+| Latest pushed commit | `eae9401` — `small fix before encapsulation` |
+| Local checked work | Minute K-line MVP before desktop packaging |
+| Changed files observed | 13 modified + 1 new collector |
 
-### Local Stage 9 files observed
+### Local files observed
 
-**Modified:** `AGENT_LOG.md`, `README.md`, `backend/tests/test_stocks.py`, `market_watch_development_plan.md`
+**Modified:** `AGENT_LOG.md`, `README.md`, `backend/app/api/stock.py`, `backend/app/schemas/stock.py`, `backend/app/services/stock_service.py`, `backend/tests/test_stocks.py`, `frontend/src/api/client.ts`, `frontend/src/components/KLineChart.tsx`, `frontend/src/pages/StockDetail.tsx`, `frontend/src/styles.css`, `market_watch_development_plan.md`, `CHECKER_LOG.md`, `suggestion.md`
 
-**New:** `docs/stage9_stability_desktop_packaging.md`
+**New:** `backend/app/collectors/intraday_kline_collector.py`
 
 ---
 
 ## Plan Acceptance Review
 
-### Stage 0: Foundation
+### Previous stages
+
+Stage 0 through Stage 9 remain aligned with the plan:
+
+- Foundation, K-line, watchlist, price-position, money-flow, sectors, rankings, click-through, realtime quotes, and stability/docs have all been implemented and verified in prior checker runs.
+- No brokerage login, order placement, account credential storage, or auto-trading features were introduced.
+- Stage 10 desktop packaging has not started yet, which is consistent with the latest builder direction: finish key watch-terminal features before encapsulation.
+
+### Current pre-desktop minute K-line enhancement
 
 | Plan / acceptance item | Status |
 |------------------------|--------|
-| Backend can start | **PASS** |
-| Frontend can start | **PASS** |
-| Frontend can access backend test endpoint | **PASS** |
-| SQLite readiness check | **PASS** |
-
-### Phase 1: Basic quotes and K-line MVP
-
-| Plan / acceptance item | Status |
-|------------------------|--------|
-| Stock search | **PASS** |
-| Daily K-line fetch/cache | **PASS** |
-| K-line chart display | **PASS** |
-| Volume display | **PASS** |
-| Quote summary | **PASS** |
-
-### Phase 2: Watchlist and Dashboard
-
-| Plan / acceptance item | Status |
-|------------------------|--------|
-| Add watchlist item | **PASS** |
-| Delete watchlist item | **PASS** |
-| Watchlist list display | **PASS** |
-| Dashboard watchlist summary | **PASS** |
-| Major index / market breadth overview | **DEFERRED** — acceptable, later market overview work |
-
-### Phase 3: Price-position / top-bottom zone
-
-| Plan / acceptance item | Status |
-|------------------------|--------|
-| 0-100 price-position score | **PASS** |
-| 250 / 750 / 1250 backend windows | **PASS** |
-| Chinese zone labels | **PASS** |
-| Stock detail position display | **PASS** |
-| Watchlist position display | **PASS** |
-| Index position and UI window switching | **DEFERRED** |
-
-### Phase 4: Main money-flow
-
-| Plan / acceptance item | Status |
-|------------------------|--------|
-| Individual stock money-flow API/cache | **PASS** |
-| Main net inflow / ratio | **PASS** |
-| Money-flow bars aligned with K-line | **PASS** |
-| Watchlist money-flow summary | **PASS** |
-| Sector money-flow history chart | **DEFERRED** |
-
-### Phase 5: Sector system
-
-| Plan / acceptance item | Status |
-|------------------------|--------|
-| Industry sector list | **PASS** |
-| Sector constituent detail | **PASS** |
-| Dashboard sector table | **PASS** |
-| Click sector / constituent into detail workflows | **PASS** |
-| Concept / region sector expansion | **DEFERRED** |
-| Sector K-line / historical sector money-flow | **DEFERRED** |
-
-### Phase 6: Rankings and daily review
-
-| Plan / acceptance item | Status |
-|------------------------|--------|
-| Stock gainers / losers | **PASS** |
-| Amount / turnover rankings | **PASS** |
-| Stock money inflow / outflow rankings | **PASS** |
-| Sector gainers / sector money-flow rankings | **PASS** |
-| Dashboard daily review panel | **PASS** |
-| Source failure isolation | **PASS** |
-
-### Phase 7: Review workflow polish / enhancement
-
-| Plan / acceptance item | Status |
-|------------------------|--------|
-| Ranking rows click into stock detail | **PASS** |
-| Sector ranking rows click into sector detail | **PASS** |
-| Sector constituent click-through remains available | **PASS** |
-| Watchlist review summary | **PASS** |
-| AI/news/alerts/backtesting | **NOT STARTED** — correct deferral |
-
-### Stage 8: Realtime market watch MVP
-
-| Plan / acceptance item | Status |
-|------------------------|--------|
-| Near-realtime stock quote collector | **PASS** — Tencent first, Eastmoney fallback |
-| `/api/stocks/{code}/quote/live` | **PASS** |
-| 3-second stock detail polling | **PASS** |
-| 5-second watchlist polling | **PASS** |
-| Quote-time and local refresh-time display | **PASS** |
-| Stale/cache metadata | **PASS** |
-| Minute K / time-sharing chart | **DEFERRED** |
-| WebSocket/SSE push | **DEFERRED** |
-
-### Stage 9: Stability, tests, data quality, desktop concept
-
-| Plan / acceptance item | Status |
-|------------------------|--------|
-| Realtime stale-cache fallback test | **PASS** |
-| Data quality fields documented | **PASS** |
-| Watchlist polling limit documented | **PASS** |
-| Desktop packaging comparison | **PASS** — Tauri vs Electron concept doc |
-| Local launcher / desktop shell concept direction | **PASS** |
-| Actual desktop packaging prototype | **NOT IMPLEMENTED** — acceptable for current concept MVP, next step |
+| Minute K endpoint exists | **PASS** — `/api/stocks/{code}/kline/minute` |
+| Supports 1-minute period | **PASS** |
+| Supports 5-minute period | **PASS** |
+| Supports 15-minute period | **PASS** |
+| Supports 30-minute period | **PASS** |
+| Supports 60-minute period | **PASS** |
+| Backend tests cover minute K | **PASS** |
+| Stock detail has period switcher | **PASS** — 日 K / 1 / 5 / 15 / 30 / 60 |
+| Chart handles intraday timestamps | **PASS** — string datetime converted to Unix timestamp |
+| Time-sharing chart | **NOT IMPLEMENTED** — expected next item |
+| Unsupported period validation | **NEEDS FIX** — returns 503 instead of 400 |
 
 ---
 
-## Independent Verification (tenth run)
+## Independent Verification (twelfth run)
 
 ### Commands run
 
 | Check | Result |
 |-------|--------|
-| `.venv/bin/python -m pytest backend/tests/ -q` | **PASS** — 40 passed |
-| `npx tsc --noEmit` | **PASS** |
+| `.venv/bin/python -m pytest backend/tests/ -q` | **PASS** — 42 passed |
+| `npm run typecheck` | **PASS** |
 | `npm run build` | **PASS** |
-| Live `GET /api/stocks/600519/quote/live?refresh=true` | **PASS** — 200 OK |
-| Live `GET /api/stocks/000001/quote/live?refresh=true` | **PASS** — 200 OK |
-| Live `GET /api/rankings/daily-review?limit=5` | **PASS** — 200 OK |
+| Live `GET /api/stocks/600519/kline/minute?period=1m` | **PASS** |
+| Live `GET /api/stocks/600519/kline/minute?period=5m` | **PASS** |
+| Live `GET /api/stocks/600519/kline/minute?period=15m` | **PASS** |
+| Live `GET /api/stocks/600519/kline/minute?period=30m` | **PASS** |
+| Live `GET /api/stocks/600519/kline/minute?period=60m` | **PASS** |
+| Live invalid period `period=2m` | **HANDLED, BUT SEMANTICS WEAK** — 503 |
 
-### Live quote smoke results
+### Live minute K smoke results
 
-| Code | Result | Source | Stale | Cache Age | Quote Time |
-|------|--------|--------|-------|-----------|------------|
-| `600519` | 200 OK | `tencent_live` | `false` | `0.0` | `2026-07-06T15:42:23` |
-| `000001` | 200 OK | `tencent_live` | `false` | `0.0` | `2026-07-06T15:42:21` |
+| Period | Result | Bars | First | Last |
+|--------|--------|------|-------|------|
+| `1m` | 200 OK | 1970 | `2026-06-25 13:53:00` | `2026-07-07 15:00:00` |
+| `5m` | 200 OK | 1970 | `2026-05-08 14:55:00` | `2026-07-07 15:00:00` |
+| `15m` | 200 OK | 1970 | `2025-12-29 14:45:00` | `2026-07-07 15:00:00` |
+| `30m` | 200 OK | 1970 | `2025-07-01 14:30:00` | `2026-07-07 15:00:00` |
+| `60m` | 200 OK | 1970 | `2024-06-25 14:00:00` | `2026-07-07 15:00:00` |
 
-### Daily review smoke result
+Invalid `period=2m` returned:
 
-The daily review endpoint returned 8 groups, all populated:
+```json
+{"detail":"暂时无法从数据源获取分钟 K 数据，请稍后重试。"}
+```
 
-| Group | Items | Source | Error |
-|-------|-------|--------|-------|
-| `stock_gainers` | 5 | `akshare_em_direct` | None |
-| `stock_losers` | 5 | `akshare_em_direct` | None |
-| `stock_amount` | 5 | `akshare_em_direct` | None |
-| `stock_turnover` | 5 | `akshare_em_direct` | None |
-| `stock_money_inflow` | 5 | `akshare_em_direct` | None |
-| `stock_money_outflow` | 5 | `akshare_em_direct` | None |
-| `sector_gainers` | 5 | `akshare_em` | None |
-| `sector_moneyflow` | 5 | `akshare_em` | None |
-
-### Stage 9 implementation verification
+### Backend verification
 
 | Check | Result |
 |-------|--------|
-| `test_get_stock_live_quote_returns_stale_cache_when_provider_fails` exists | **PASS** |
-| Test clears shared live quote cache around stock tests | **PASS** |
-| `README.md` mentions Stage 9 current stage and doc | **PASS** |
-| `market_watch_development_plan.md` has Phase 9 section | **PASS** |
-| `docs/stage9_stability_desktop_packaging.md` exists | **PASS** |
-| Tauri / Electron directions compared | **PASS** |
-| No brokerage / order / auto-trading scope introduced | **PASS** |
+| `intraday_kline_collector.py` exists | **PASS** |
+| Sina / AKShare minute source first | **PASS** |
+| Eastmoney minute fallback exists | **PASS** |
+| `StockService.get_intraday_kline()` exists | **PASS** |
+| API route mounted | **PASS** |
+| `KlineBar.date` accepts datetime string | **PASS** |
+| Minute K test exists | **PASS** |
+
+### Frontend verification
+
+| Check | Result |
+|-------|--------|
+| `getStockIntradayKline()` client exists | **PASS** |
+| Stock detail period switcher exists | **PASS** |
+| Daily K still shows money-flow bars | **PASS** |
+| Minute K hides money-flow bars | **PASS** |
+| Intraday time converted for Lightweight Charts | **PASS** |
+| Chinese labels are used | **PASS** |
+
+### Project boundary
+
+| Check | Expected | Result |
+|-------|----------|--------|
+| Brokerage login | Absent | **PASS** |
+| Order placement | Absent | **PASS** |
+| Auto-trading | Absent | **PASS** |
+| Credential storage | Absent | **PASS** |
 
 ---
 
 ## Issues and Gaps
 
+### High priority
+
+1. **Unsupported minute period should return 400**
+   - Current `period=2m` returns 503 with a data-source error.
+   - This is not a provider failure; it is a client parameter validation failure.
+   - Fix by validating `period` at API/service boundary and returning a clear 400.
+
 ### Medium priority
 
-1. **Stage 9 is documentation/test MVP, not executable desktop POC**
-   - The current Stage 9 output is useful and aligned with the plan.
-   - The next step should be an actual local launcher script or desktop shell proof of concept if the project wants to advance packaging.
+2. **Minute K has no local cache yet**
+   - The endpoint fetches live provider data each time.
+   - Acceptable for MVP, but repeated switching can increase provider pressure.
 
-2. **README current flow is still slightly high-level**
-   - It points to Stage 9 docs, but the current app flow could better summarize Stage 0-8 capabilities in grouped sections.
+3. **Minute K source quality is undocumented in UI**
+   - The chart says minute K is for intraday observation, but does not show source/fallback details.
+   - Consider a small note if source instability becomes visible.
 
-3. **Realtime browser behavior is still not automated**
-   - Backend tests cover stale fallback.
-   - Frontend polling behavior still relies on manual or build-level verification.
+4. **No time-sharing chart yet**
+   - This remains the next obvious Path B item before a richer desktop watch experience.
 
-4. **Stage numbering mixes Phase / Stage wording**
-   - Historical docs use both `Phase` and `Stage`.
-   - This is understandable but should be normalized before packaging docs grow further.
+5. **No browser interaction test for period switching**
+   - Typecheck/build and backend smoke pass.
+   - Manual browser verification should confirm chart redraw for each period.
 
 ### Low priority
 
-5. **Desktop docs do not choose a final shell**
-   - Current recommendation is “local launcher first, then evaluate Electron/Tauri.”
-   - This is reasonable now; final choice can wait until a launcher proof is tested.
+6. **Period switch triggers position reload**
+   - `loadData()` reloads 250-day position whenever `klinePeriod` changes.
+   - Functionally OK, but unnecessary work. Position could be loaded independently from chart period.
 
 ---
 
 ## Checker Verdict
 
-**Rating: GOOD — current local Stage 9 follows the plan and satisfies the current acceptance expectation.**
+**Rating: GOOD — latest builder update follows the plan and meaningfully improves pre-desktop watch quality.**
 
-The project has not skipped ahead into out-of-scope trading features. The sequence is coherent: core watch/K-line → watchlist → price position → money-flow → sectors/rankings → realtime quotes → stability/data-quality/desktop concept. Earlier stage gaps are either already addressed or explicitly deferred in the plan.
+The minute K-line MVP satisfies the most important intraday acceptance points and fixes the prior chart blank-screen problem. It does not complete time-sharing chart or desktop packaging, but those are properly next steps rather than regressions.
 
 ---
 
@@ -255,3 +198,5 @@ The project has not skipped ahead into out-of-scope trading features. The sequen
 | 2026-07-06 (8th) | Stage 0-6 remote + Phase 7 local | PASS | 38 tests pass; ranking click-through wiring verified |
 | 2026-07-06 (9th) | Stage 0-7 remote + Stage 8 local | PASS | 39 tests pass; realtime live quote smoke OK |
 | 2026-07-06 (10th) | Stage 0-8 remote + Stage 9 local | PASS | 40 tests pass; stability/docs MVP checked |
+| 2026-07-07 (11th) | Stage 0-9 baseline | PASS WITH GAPS | Pre-desktop packaging gap review |
+| 2026-07-07 (12th) | Minute K pre-desktop enhancement | PASS WITH PARAMETER GAP | 42 tests pass; minute K live smoke OK |

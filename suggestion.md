@@ -2,135 +2,132 @@
 
 This file summarizes the latest checker process and gives focused suggestions for the next builder agent. It should be overwritten after every future checker run.
 
-**Last checker run:** 2026-07-06 (tenth run)  
-**Current stage checked:** Stage 9 stability / data quality / desktop packaging concept MVP  
+**Last checker run:** 2026-07-07 (twelfth run)  
+**Current stage checked:** Pre-desktop Path B minute K-line MVP  
 **Source report:** `CHECKER_LOG.md`
 
 ---
 
 ## Checker Summary
 
-The checker verified whether current work follows the plan through Stage 9 and whether previous stages meet their acceptance expectations.
+The checker verified builder’s latest update: minute K-line support before desktop encapsulation.
 
-Result: **PASS**.
+Result: **PASS with one parameter-handling gap**.
 
 Verified behavior:
 
-- Backend tests pass: 40/40.
+- Backend tests pass: 42/42.
 - Frontend typecheck passes.
 - Frontend production build passes.
-- Live quotes for `600519` and `000001` return 200.
-- Live quote responses include `is_stale` and `cache_age_seconds`.
-- Daily review endpoint returns 8 populated ranking groups.
-- Stage 9 stale realtime quote fallback test exists.
-- Stage 9 stability / data quality / desktop packaging concept doc exists.
-- Stage 0 through Stage 8 remain aligned with the planned build order.
-- Project remains a personal market observation app, not a trading platform.
+- Live minute K endpoints return 200 for:
+  - `1m`
+  - `5m`
+  - `15m`
+  - `30m`
+  - `60m`
+- Stock detail has a period switcher: 日 K / 1 分 / 5 分 / 15 分 / 30 分 / 60 分.
+- Intraday datetime strings are converted to Unix timestamps before passing data into Lightweight Charts.
+- The prior blank chart risk from invalid intraday time strings is addressed.
+- No trading, brokerage, account, order, or credential functionality was introduced.
 
-Overall assessment:
+Important finding:
 
-- Stage 9 is acceptable as a **documentation + test MVP**.
-- It is not yet an executable desktop packaging proof of concept.
+- Invalid minute period `2m` currently returns `503`.
+- This should be a `400` parameter validation error, not a data-source failure.
 
 ---
 
 ## Builder Fix Suggestions
 
-### 1. Turn Stage 9 desktop concept into a runnable local launcher
+### 1. Return 400 for unsupported minute K periods
 
-Current Stage 9 documentation is useful, but still conceptual.
+Current behavior:
 
-Suggested next step:
+- `GET /api/stocks/600519/kline/minute?period=2m` returns 503.
 
-- Add a local launcher script that starts backend and frontend in the correct order.
-- Check whether ports `8000` and `5173` are already occupied.
-- Print clear Chinese startup instructions and URLs.
-- Keep this as a local developer/private-user launcher before choosing Electron or Tauri.
+Expected behavior:
 
-### 2. Normalize Stage / Phase naming
+- Return 400 with a clear Chinese message, for example:
+  - `分钟 K 周期仅支持 1m、5m、15m、30m、60m`
 
-The project currently uses both `Phase` and `Stage`.
+Suggested fix:
 
-Suggested cleanup:
+- Validate `period` in the API or service layer before calling the collector.
+- Do not catch unsupported-period `ValueError` together with provider/network failures.
+- Add a backend test for invalid period.
 
-- Use one naming convention in docs going forward.
-- If keeping both, define the mapping clearly once.
-- Keep historical log entries unchanged unless they are confusing.
+### 2. Decouple position loading from K-line period switching
 
-### 3. Improve README current flow
+Current behavior:
 
-`README.md` now points to Stage 9 docs, but the app has grown beyond the old short flow.
+- Switching from 日 K to 分钟 K reloads price position as part of `loadData()`.
+- Price position is based on daily history, so it does not need to reload for every intraday period switch.
 
-Suggested README structure:
+Suggested improvement:
 
-- Core stock flow: search, K-line, price position, money-flow.
-- Watchlist flow: add/delete, live refresh, review summary.
-- Dashboard flow: daily review rankings and sectors.
-- Realtime flow: near-realtime quote polling and staleness labels.
-- Stability / desktop preparation: Stage 9 docs.
+- Load position independently from chart period.
+- When only `klinePeriod` changes, reload only the K-line data.
+- Keep quote/live polling independent.
 
-### 4. Add browser smoke verification for realtime behavior
+### 3. Add a small data-source note for minute K
 
-Backend tests cover stale fallback, but browser behavior still needs manual or automated verification.
+Minute K now uses AKShare/Sina first and Eastmoney fallback.
 
-Suggested checks:
+Suggested UI/doc note:
 
-- Stock detail quote updates without full page reload.
-- Watchlist quote and change-percent update after polling.
-- Cached/stale quote status is visible when applicable.
-- Historical K-line, position, and money-flow panels remain usable if live quote refresh fails.
+- Minute K is for intraday observation.
+- Free data sources may delay or fail.
+- It is not tick-level or Level-2 data.
 
-### 5. Keep Stage 9 scope focused
+Keep the wording as observation, not trading signal.
 
-Stage 9 should harden the local MVP before adding more features.
+### 4. Consider lightweight caching for minute K
 
-Good Stage 9 work:
+Minute K fetches can be heavy if users switch periods repeatedly.
 
-- Better startup scripts.
-- Data quality docs.
-- Cache/staleness tests.
-- Provider fallback tests.
-- Desktop shell concept proof.
+Suggested approach:
 
-Defer:
+- Add short in-memory cache by `(code, period)`.
+- Use a small TTL, such as 15-30 seconds.
+- Keep manual refresh available.
 
-- AI analysis.
-- News.
-- Backtesting.
-- Complex alerts.
-- Brokerage or trading integrations.
+### 5. Manually smoke-test chart switching in browser
 
-### 6. Preserve no-trading wording
+Backend and build checks pass, but browser interaction should still be verified.
 
-Continue using:
+Suggested manual checks:
 
-- 近实时
-- 行情观察
-- 数据质量
-- 缓存回退
-- 本地桌面壳
+- Open a stock detail page.
+- Switch 日 K → 1 分 → 5 分 → 15 分 → 30 分 → 60 分.
+- Confirm the chart does not blank.
+- Confirm volume remains visible.
+- Confirm daily money-flow bars only appear on 日 K, not minute K.
 
-Avoid:
+### 6. Next pre-desktop feature: time-sharing chart
 
-- 买入
-- 卖出
-- 建仓
-- 清仓
-- 交易信号
-- 下单
+Minute K is a good step toward a desktop watch experience.
 
-Stage 9 should improve reliability and packaging readiness, not move toward trading execution.
+Next likely feature before desktop packaging:
+
+- Time-sharing chart / 分时图.
+
+Keep it scoped:
+
+- Price line.
+- Intraday volume.
+- Clear data-source label.
+- No buy/sell signals.
 
 ---
 
 ## Suggested Next Build Direction
 
-Best next technical step: make Stage 9 operational instead of only conceptual.
+Best next technical step: fix minute K parameter semantics, then continue toward time-sharing chart.
 
 Recommended order:
 
-1. Add a local launcher script for backend + frontend.
-2. Add startup checks for ports and dependency presence.
-3. Update README with grouped current app flows.
-4. Add browser smoke notes or lightweight frontend interaction tests for realtime polling.
-5. Re-evaluate Electron vs Tauri only after the launcher path works smoothly.
+1. Return 400 for unsupported minute K periods and add a test.
+2. Decouple position loading from period switching.
+3. Add short minute K cache if provider pressure becomes visible.
+4. Browser-smoke-test all period switches.
+5. Start time-sharing chart MVP.

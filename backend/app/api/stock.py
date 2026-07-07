@@ -34,6 +34,15 @@ def get_stock_kline(
     return service.get_kline(code, start=start, end=end, refresh=refresh)
 
 
+@router.get("/{code}/kline/minute", response_model=KlineResponse)
+def get_stock_intraday_kline(
+    code: str,
+    period: str = Query(default="1m"),
+    service: StockService = Depends(get_stock_service),
+):
+    return service.get_intraday_kline(code, period=period)
+
+
 @router.get("/{code}/quote", response_model=StockQuote)
 def get_stock_quote(
     code: str,

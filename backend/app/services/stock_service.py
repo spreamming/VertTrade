@@ -7,6 +7,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from ..collectors.kline_collector import fetch_daily_kline
+from ..collectors.intraday_kline_collector import fetch_intraday_kline
 from ..collectors.moneyflow_collector import (
     MoneyflowDataSourceError,
     fetch_stock_moneyflow,
@@ -137,6 +138,42 @@ class StockService:
         ]
 
         return KlineResponse(code=stock.code, name=stock.name, bars=bars)
+
+    def get_intraday_kline(self, code: str, period: str = "1m") -> KlineResponse:
+        if period not in ("1m", "5m", "15m", "30m", "60m"):
+            raise HTTPException(
+                status_code=400,
+                detail="分钟 K 周期仅支持 1m、5m、15m、30m、60m",
+            )
+
+        self.ensure_stock_catalog()
+        stock = self.stock_repo.get_by_code(code)
+        if stock is None:
+            raise HTTPException(status_code=404, detail=f"未找到股票 {code}")
+
+        try:
+            frame = fetch_intraday_kline(code, period=period)
+        except (requests.RequestException, ValueError) as exc:
+            raise HTTPException(
+                status_code=503,
+                detail="暂时无法从数据源获取分钟 K 数据，请稍后重试。",
+            ) from exc
+
+        bars = [
+            KlineBar(
+                date=row["trade_time"],
+                open=row["open"],
+                high=row["high"],
+                low=row["low"],
+                close=row["close"],
+                volume=row["volume"],
+                amount=row["amount"],
+                turnover_rate=row["turnover_rate"],
+            )
+            for row in frame.to_dict(orient="records")
+        ]
+
+        return KlineResponse(code=stock.code, name=stock.name, period=period, bars=bars)
 
     def _build_quote_from_kline(self, kline: KlineResponse, code: str) -> StockQuote:
         if not kline.bars:

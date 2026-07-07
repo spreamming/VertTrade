@@ -76,6 +76,35 @@ def client(monkeypatch):
         fake_kline,
     )
     monkeypatch.setattr(
+        "backend.app.services.stock_service.fetch_intraday_kline",
+        lambda code, period="1m": pd.DataFrame(
+            [
+                {
+                    "trade_time": "2026-07-06 09:31:00",
+                    "open": 100.0,
+                    "high": 101.0,
+                    "low": 99.5,
+                    "close": 100.5,
+                    "pre_close": None,
+                    "volume": 100.0,
+                    "amount": 10000.0,
+                    "turnover_rate": None,
+                },
+                {
+                    "trade_time": "2026-07-06 09:32:00",
+                    "open": 100.5,
+                    "high": 102.0,
+                    "low": 100.0,
+                    "close": 101.5,
+                    "pre_close": 100.5,
+                    "volume": 120.0,
+                    "amount": 12000.0,
+                    "turnover_rate": None,
+                },
+            ]
+        ),
+    )
+    monkeypatch.setattr(
         "backend.app.services.stock_service.fetch_live_quote",
         lambda code: {
             "code": code,
@@ -121,6 +150,23 @@ def test_get_stock_kline(client: TestClient):
     assert payload["code"] == "600519"
     assert len(payload["bars"]) == 2
     assert payload["bars"][0]["close"] == 103.0
+
+
+def test_get_stock_intraday_kline(client: TestClient):
+    response = client.get("/api/stocks/600519/kline/minute", params={"period": "1m"})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["period"] == "1m"
+    assert payload["bars"][0]["date"] == "2026-07-06 09:31:00"
+    assert payload["bars"][1]["close"] == 101.5
+
+
+def test_get_stock_intraday_kline_rejects_unsupported_period(client: TestClient):
+    response = client.get("/api/stocks/600519/kline/minute", params={"period": "2m"})
+
+    assert response.status_code == 400
+    assert "1m、5m、15m、30m、60m" in response.json()["detail"]
 
 
 def test_get_stock_quote(client: TestClient):

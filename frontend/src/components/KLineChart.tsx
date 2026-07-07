@@ -20,14 +20,21 @@ type KLineChartProps = {
 };
 
 function toChartTime(date: string): Time {
+  if (date.includes(":")) {
+    return Math.floor(new Date(date.replace(" ", "T")).getTime() / 1000) as Time;
+  }
   return date as Time;
 }
 
 function formatChineseChartDate(time: Time): string {
   if (typeof time === "string") {
-    const [year, month, day] = time.split("-");
-    if (year && month && day) {
-      return `${Number(year)}年${Number(month)}月${Number(day)}日`;
+    const date = new Date(time.replace(" ", "T"));
+    if (!Number.isNaN(date.getTime())) {
+      const hasTime = time.includes(":");
+      const dateText = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+      return hasTime
+        ? `${dateText} ${date.toLocaleTimeString("zh-CN", { hour12: false })}`
+        : dateText;
     }
     return time;
   }
@@ -42,12 +49,20 @@ function formatChineseChartDate(time: Time): string {
 
 function formatChineseTickDate(time: Time): string {
   if (typeof time === "string") {
-    const [year, month, day] = time.split("-");
-    if (year && month && day) {
+    const date = new Date(time.replace(" ", "T"));
+    if (!Number.isNaN(date.getTime())) {
+      if (time.includes(":")) {
+        return date.toLocaleTimeString("zh-CN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        });
+      }
       const currentYear = new Date().getFullYear();
-      const numericYear = Number(year);
-      const suffix = `${Number(month)}月${Number(day)}日`;
-      return numericYear === currentYear ? suffix : `${numericYear}年${suffix}`;
+      const suffix = `${date.getMonth() + 1}月${date.getDate()}日`;
+      return date.getFullYear() === currentYear
+        ? suffix
+        : `${date.getFullYear()}年${suffix}`;
     }
   }
 

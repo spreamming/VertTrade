@@ -11,7 +11,7 @@ class StockSummary(BaseModel):
 
 
 class KlineBar(BaseModel):
-    date: date
+    date: date | str
     open: float
     high: float
     low: float

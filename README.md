@@ -72,10 +72,11 @@ You can:
 20. Use near-real-time quote refresh on stock detail pages.
 21. See lightweight near-real-time price and change-percent refresh in the watchlist table, including provider quote time and local refresh time.
 22. Review Stage 9 stability and desktop packaging notes in `docs/stage9_stability_desktop_packaging.md`.
+23. Switch stock detail charts between daily K and 1 / 5 / 15 / 30 / 60 minute K.
 
 Next target:
 
-1. Add minute K-line and time-sharing chart.
+1. Add time-sharing chart with price and average-price lines.
 2. Prototype desktop shell startup around the local backend/frontend.
 3. Major index and market overview data for the Dashboard.
 
