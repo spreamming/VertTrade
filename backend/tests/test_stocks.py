@@ -105,6 +105,27 @@ def client(monkeypatch):
         ),
     )
     monkeypatch.setattr(
+        "backend.app.services.stock_service.fetch_timeshare",
+        lambda code: pd.DataFrame(
+            [
+                {
+                    "time": "2026-07-06 09:30:00",
+                    "price": 100.0,
+                    "average_price": 100.0,
+                    "volume": 100.0,
+                    "amount": 10000.0,
+                },
+                {
+                    "time": "2026-07-06 09:31:00",
+                    "price": 101.0,
+                    "average_price": 100.5,
+                    "volume": 120.0,
+                    "amount": 12120.0,
+                },
+            ]
+        ),
+    )
+    monkeypatch.setattr(
         "backend.app.services.stock_service.fetch_live_quote",
         lambda code: {
             "code": code,
@@ -167,6 +188,16 @@ def test_get_stock_intraday_kline_rejects_unsupported_period(client: TestClient)
 
     assert response.status_code == 400
     assert "1m、5m、15m、30m、60m" in response.json()["detail"]
+
+
+def test_get_stock_timeshare(client: TestClient):
+    response = client.get("/api/stocks/600519/timeshare")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["source"] == "tencent"
+    assert payload["points"][0]["time"] == "2026-07-06 09:30:00"
+    assert payload["points"][1]["average_price"] == 100.5
 
 
 def test_get_stock_quote(client: TestClient):

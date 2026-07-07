@@ -22,6 +22,21 @@ export type KlineResponse = {
   bars: KlineBar[];
 };
 
+export type TimeSharePoint = {
+  time: string;
+  price: number;
+  average_price?: number | null;
+  volume?: number | null;
+  amount?: number | null;
+};
+
+export type TimeShareResponse = {
+  code: string;
+  name: string;
+  source: string;
+  points: TimeSharePoint[];
+};
+
 export type StockQuote = {
   code: string;
   name: string;

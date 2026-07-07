@@ -73,12 +73,13 @@ You can:
 21. See lightweight near-real-time price and change-percent refresh in the watchlist table, including provider quote time and local refresh time.
 22. Review Stage 9 stability and desktop packaging notes in `docs/stage9_stability_desktop_packaging.md`.
 23. Switch stock detail charts between daily K and 1 / 5 / 15 / 30 / 60 minute K.
+24. View a time-sharing chart with price line, average-price line, and intraday volume.
 
 Next target:
 
-1. Add time-sharing chart with price and average-price lines.
-2. Prototype desktop shell startup around the local backend/frontend.
-3. Major index and market overview data for the Dashboard.
+1. Prototype desktop shell startup around the local backend/frontend.
+2. Major index and market overview data for the Dashboard.
+3. Add richer intraday chart polish if needed.
 
 ## Local Setup
 

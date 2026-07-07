@@ -16,6 +16,7 @@ from ..collectors.realtime_quote_collector import (
     RealtimeQuoteDataSourceError,
     fetch_live_quote,
 )
+from ..collectors.timeshare_collector import fetch_timeshare
 from ..collectors.stock_basic_collector import fetch_stock_list
 from ..indicators.position_score import calculate_position_score
 from ..repositories.kline_repo import KlineRepository
@@ -29,6 +30,8 @@ from ..schemas.stock import (
     StockPosition,
     StockQuote,
     StockSummary,
+    TimeSharePoint,
+    TimeShareResponse,
 )
 
 
@@ -174,6 +177,32 @@ class StockService:
         ]
 
         return KlineResponse(code=stock.code, name=stock.name, period=period, bars=bars)
+
+    def get_timeshare(self, code: str) -> TimeShareResponse:
+        self.ensure_stock_catalog()
+        stock = self.stock_repo.get_by_code(code)
+        if stock is None:
+            raise HTTPException(status_code=404, detail=f"未找到股票 {code}")
+
+        try:
+            frame = fetch_timeshare(code)
+        except (requests.RequestException, ValueError) as exc:
+            raise HTTPException(
+                status_code=503,
+                detail="暂时无法从数据源获取分时图数据，请稍后重试。",
+            ) from exc
+
+        points = [
+            TimeSharePoint(
+                time=row["time"],
+                price=row["price"],
+                average_price=row["average_price"],
+                volume=row["volume"],
+                amount=row["amount"],
+            )
+            for row in frame.to_dict(orient="records")
+        ]
+        return TimeShareResponse(code=stock.code, name=stock.name, points=points)
 
     def _build_quote_from_kline(self, kline: KlineResponse, code: str) -> StockQuote:
         if not kline.bars:

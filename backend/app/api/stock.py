@@ -4,7 +4,14 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..schemas.stock import KlineResponse, MoneyflowResponse, StockPosition, StockQuote, StockSummary
+from ..schemas.stock import (
+    KlineResponse,
+    MoneyflowResponse,
+    StockPosition,
+    StockQuote,
+    StockSummary,
+    TimeShareResponse,
+)
 from ..services.stock_service import StockService
 
 router = APIRouter(prefix="/api/stocks", tags=["stocks"])
@@ -41,6 +48,14 @@ def get_stock_intraday_kline(
     service: StockService = Depends(get_stock_service),
 ):
     return service.get_intraday_kline(code, period=period)
+
+
+@router.get("/{code}/timeshare", response_model=TimeShareResponse)
+def get_stock_timeshare(
+    code: str,
+    service: StockService = Depends(get_stock_service),
+):
+    return service.get_timeshare(code)
 
 
 @router.get("/{code}/quote", response_model=StockQuote)

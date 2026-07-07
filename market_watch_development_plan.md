@@ -752,8 +752,10 @@ MVP 阶段建议优先使用 AKShare 中封装的东方财富资金流相关接�
 - 已新增分钟 K 采集器：优先使用新浪分钟 K，东方财富分钟 K 作为 fallback；
 - 已新增分钟 K API：`GET /api/stocks/{code}/kline/minute?period=1m|5m|15m|30m|60m`；
 - 个股详情页已支持日 K / 1 分 / 5 分 / 15 分 / 30 分 / 60 分周期切换；
+- 已新增分时图 API：`GET /api/stocks/{code}/timeshare`；
+- 个股详情页已支持分时图，展示价格线、均价线和盘中成交量；
 - 该阶段仍不接券商账户、不下单、不做自动交易；
-- 分时图、SSE/WebSocket 推送仍留待后续增强。
+- SSE/WebSocket 推送仍留待后续增强。
 
 ---
 

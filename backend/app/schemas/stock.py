@@ -51,6 +51,21 @@ class KlineResponse(BaseModel):
     bars: list[KlineBar] = Field(default_factory=list)
 
 
+class TimeSharePoint(BaseModel):
+    time: str
+    price: float
+    average_price: float | None = None
+    volume: float | None = None
+    amount: float | None = None
+
+
+class TimeShareResponse(BaseModel):
+    code: str
+    name: str
+    source: str = "tencent"
+    points: list[TimeSharePoint] = Field(default_factory=list)
+
+
 class StockPosition(BaseModel):
     code: str
     name: str

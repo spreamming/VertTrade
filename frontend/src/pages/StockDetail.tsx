@@ -8,17 +8,20 @@ import {
   getStockLiveQuote,
   getStockMoneyflow,
   getStockPosition,
+  getStockTimeshare,
   getWatchlist,
   type KlineResponse,
   type MoneyflowResponse,
   type StockPosition,
   type StockQuote,
   type StockSummary,
+  type TimeShareResponse,
   type WatchlistItem,
 } from "../api/client";
 import { KLineChart } from "../components/KLineChart";
 import { MoneyFlowPanel } from "../components/MoneyFlowPanel";
 import { PositionCard } from "../components/PositionCard";
+import { TimeShareChart } from "../components/TimeShareChart";
 import { buildQuoteFromKline } from "../utils/quote";
 
 type StockDetailProps = {
@@ -27,6 +30,7 @@ type StockDetailProps = {
 };
 
 const KLINE_PERIODS = [
+  { value: "timeshare", label: "分时" },
   { value: "daily", label: "日 K" },
   { value: "1m", label: "1 分" },
   { value: "5m", label: "5 分" },
@@ -65,6 +69,7 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
   const didInitialKlineLoadRef = useRef(false);
   const [quote, setQuote] = useState<StockQuote | null>(null);
   const [kline, setKline] = useState<KlineResponse | null>(null);
+  const [timeshare, setTimeshare] = useState<TimeShareResponse | null>(null);
   const [klinePeriod, setKlinePeriod] = useState("daily");
   const [position, setPosition] = useState<StockPosition | null>(null);
   const [moneyflow, setMoneyflow] = useState<MoneyflowResponse | null>(null);
@@ -97,6 +102,18 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
       setError(null);
 
       try {
+        if (klinePeriod === "timeshare") {
+          const timeshareData = await getStockTimeshare(stock.code);
+          setTimeshare(timeshareData);
+          if (timeshareData.points.length > 0) {
+            const latest = timeshareData.points[timeshareData.points.length - 1];
+            setQuote((current) =>
+              current ? { ...current, latest_price: latest.price } : current,
+            );
+          }
+          return;
+        }
+
         const klineData =
           klinePeriod === "daily"
             ? await getStockKline(stock.code, refresh)
@@ -109,8 +126,9 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
 
         setQuote(quoteData);
         setKline(klineData);
+        setTimeshare(null);
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "加载 K 线数据失败");
+        setError(err instanceof Error ? err.message : "加载图表数据失败");
       } finally {
         setKlineLoading(false);
       }
@@ -340,7 +358,33 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
 
       <PositionCard position={position} loading={loading || positionLoading} />
 
-      {kline && kline.bars.length > 0 ? (
+      {klinePeriod === "timeshare" && timeshare && timeshare.points.length > 0 ? (
+        <section className="chart-panel">
+          <div className="section-header">
+            <div>
+              <h2>分时图</h2>
+              <p className="section-copy">
+                分时图展示盘中价格线、均价线和成交量，仅用于行情观察。
+              </p>
+            </div>
+            <div className="period-switcher">
+              {KLINE_PERIODS.map((period) => (
+                <button
+                  key={period.value}
+                  type="button"
+                  className={period.value === klinePeriod ? "period-active" : ""}
+                  onClick={() => setKlinePeriod(period.value)}
+                >
+                  {period.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <TimeShareChart points={timeshare.points} />
+        </section>
+      ) : null}
+
+      {klinePeriod !== "timeshare" && kline && kline.bars.length > 0 ? (
         <section className="chart-panel">
           <div className="section-header">
             <div>

@@ -55,7 +55,7 @@ Older pushed commits before `dd0b997` may still contain Cursor co-author trailer
 - GitHub repo: `https://github.com/spreamming/VertTrade.git`
 - Local branch: `main`
 - Remote: `origin`
-- Latest pushed commit on `main`: `eae9401 small fix before encapsulation`
+- Latest pushed commit on `main`: `0bef8b7 minute k-line mvp`
 - Correct Git identity for commits: `spreamming <fredspream@gmail.com>`
 - Repo-local Git identity is configured in `.git/config` so future commits in this repo use the correct author.
 
@@ -80,7 +80,7 @@ Initial scaffold already created:
 
 Dependencies have been installed locally.
 
-Stage 0 through Stage 9 stability baseline are complete and pushed (`eae9401`). Path B minute K-line MVP is implemented locally and ready to commit.
+Stage 0 through Stage 9 stability baseline and Path B minute K-line MVP are complete and pushed. Path B time-sharing chart MVP is implemented locally and ready to commit.
 
 Current verification commands have passed:
 
@@ -181,3 +181,5 @@ Current verification commands have passed:
 - Began Path B before desktop packaging: implemented minute K-line MVP with `intraday_kline_collector.py`, `/api/stocks/{code}/kline/minute`, and stock detail period switcher for 日 K / 1 分 / 5 分 / 15 分 / 30 分 / 60 分. Minute K uses Sina via AKShare first and Eastmoney as fallback; Tencent minute K was probed but SSL-unstable. Backend tests now 42 pass and frontend typecheck/build pass. Time-sharing chart remains next.
 - Fixed minute K chart blank-screen crash: Lightweight Charts only accepts `YYYY-MM-DD` string times, so intraday `YYYY-MM-DD HH:mm:ss` values are now converted to Unix timestamps before `setData`. Frontend typecheck/build and backend tests pass.
 - Applied minute K checker suggestions: unsupported minute periods now return HTTP 400 with a clear Chinese validation message, and stock detail period switching reloads only K-line data instead of reloading daily price position/money-flow. Backend tests now 43 pass and frontend typecheck/build pass.
+- Committed and pushed `0bef8b7 minute k-line mvp` without any `Co-authored-by` trailer (recreated via `commit-tree` after Cursor injected co-author on first attempt). Verified 43 backend tests, frontend typecheck, and push to `origin/main`.
+- Continued Path B with time-sharing chart MVP: added Tencent time-sharing collector, `/api/stocks/{code}/timeshare`, `TimeShareChart` with price line, average-price line, and intraday volume, plus stock detail “分时” period option. Live smoke for `600519` returned 267 points; backend tests now 44 pass and frontend typecheck/build pass.

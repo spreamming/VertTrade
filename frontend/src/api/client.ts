@@ -11,6 +11,7 @@ import type {
   StockPosition,
   StockQuote,
   StockSummary,
+  TimeShareResponse,
   WatchlistItem,
 } from "../types/stock";
 
@@ -36,6 +37,7 @@ export type {
   StockPosition,
   StockQuote,
   StockSummary,
+  TimeShareResponse,
   WatchlistItem,
 };
 
@@ -115,6 +117,10 @@ export async function getStockIntradayKline(
   return request<KlineResponse>(
     `/api/stocks/${code}/kline/minute?${params.toString()}`,
   );
+}
+
+export async function getStockTimeshare(code: string): Promise<TimeShareResponse> {
+  return request<TimeShareResponse>(`/api/stocks/${code}/timeshare`);
 }
 
 export async function getStockQuote(
