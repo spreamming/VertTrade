@@ -46,7 +46,7 @@ VertTrade/
 
 ## Current Stage
 
-Stage 0 through Stage 14 are complete. **Next: Stage 15 formal desktop installer.**
+Stage 0 through Stage 14 are complete. **Stage 15 desktop installer infrastructure is in place** (sidecar + electron-builder); run `npm run dist:mac` in `desktop/` to produce a DMG on your machine.
 
 Daily development should use the local web app (`scripts/start_local.py` or Vite dev server), not the Electron POC installer path.
 
@@ -84,7 +84,9 @@ You can:
 
 Next target (Stage 15 installer):
 
-1. **Stage 15**: Formal installer, Python sidecar, SQLite in app data.
+1. Build sidecar: `bash scripts/build_backend_sidecar.sh`
+2. Build macOS DMG: `cd desktop && npm install && npm run dist:mac`
+3. See `docs/stage15_desktop_installer.md` for data directory, settings, and update flow.
 
 ## Local Setup
 
@@ -158,6 +160,7 @@ Stability / desktop preparation:
 
 - See `docs/stage9_stability_desktop_packaging.md`.
 - Stage 14 QA: `docs/stage14_regression_checklist.md`, `docs/stage14_data_source_policy.md`, `docs/stage14_known_limitations.md`.
+- Stage 15 desktop installer: `docs/stage15_desktop_installer.md`.
 - After market close, optionally run: `.venv/bin/python scripts/refresh_watchlist_cache.py`
 
 ## Verification

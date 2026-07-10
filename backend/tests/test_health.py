@@ -8,9 +8,10 @@ def test_health_check_returns_ok():
         response = client.get("/api/health")
 
     assert response.status_code == 200
-    assert response.json() == {
-        "status": "ok",
-        "app": "VertTrade",
-        "environment": "development",
-        "database": "ok",
-    }
+    payload = response.json()
+    assert payload["status"] == "ok"
+    assert payload["app"] == "VertTrade"
+    assert payload["environment"] == "development"
+    assert payload["database"] == "ok"
+    assert payload["packaged"] is False
+    assert "VertTrade" in payload["data_dir"] or "data" in payload["data_dir"]

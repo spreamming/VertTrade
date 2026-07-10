@@ -38,6 +38,12 @@ frontend/dist/
 frontend/.vite/
 frontend/*.tsbuildinfo
 
+# Desktop packaging artifacts
+desktop/dist/
+desktop/resources/backend/*
+!desktop/resources/backend/.gitkeep
+build/pyinstaller/
+
 # Local data
 data/*.db
 data/*.sqlite

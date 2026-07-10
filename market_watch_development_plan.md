@@ -938,9 +938,15 @@ MVP 阶段建议优先使用 AKShare 中封装的东方财富资金流相关接�
 - 发新版时可通过 rebuild installer + 覆盖安装更新；
 - 仍不包含券商登录、下单、自动交易或账户凭证。
 
-当前实现状态（2026-07-08）：
+当前实现状态（2026-07-10）：
 
-- 未开始；Stage 10 POC 仅验证了 Electron 壳 + 本地后端启动路径。
+- 已支持应用数据目录（`VERTTRADE_DATA_DIR` / Application Support）存放 SQLite；
+- 已提供 `backend/run_server.py` + `scripts/build_backend_sidecar.sh`（PyInstaller onedir sidecar）；
+- Electron `main.cjs` 在打包模式下启动 sidecar 并注入环境变量；
+- `electron-builder` 配置 macOS DMG / Windows NSIS；
+- 可选 `settings.json` 覆盖 `watchlist_live_refresh_limit`；
+- 文档：`docs/stage15_desktop_installer.md`；
+- 构建命令：`bash scripts/build_backend_sidecar.sh` → `cd desktop && npm run dist:mac`。
 
 ---
 
@@ -967,7 +973,7 @@ MVP 阶段建议优先使用 AKShare 中封装的东方财富资金流相关接�
 
 ```text
 已完成: Stage 0–14（含 Electron POC 与打包前 QA）
-当前重点: Stage 15 正式 installer
+当前重点: Stage 15 正式 installer（sidecar + electron-builder 已就绪，待本机 dist 验收）
 日常开发: scripts/start_local.py 或 Vite dev server（不要边开发边重装 installer）
 ```
 

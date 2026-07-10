@@ -1,0 +1,2 @@
+# Optional build-time dependencies (install in .venv when packaging desktop app)
+pyinstaller

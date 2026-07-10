@@ -81,7 +81,7 @@ Initial scaffold already created:
 
 Dependencies have been installed locally.
 
-Stage 0 through Stage 13 are complete. **Current focus: Stage 15 formal installer (Stage 14 pre-pack QA complete).**
+Stage 0 through Stage 14 are complete. **Current focus: Stage 15 formal installer (sidecar + electron-builder ready).**
 
 Current verification commands have passed:
 
@@ -192,3 +192,5 @@ Current verification commands have passed:
 - Implemented Stage 13 analysis UX polish: added price-position window switcher (250/750/1250), daily K-line position score sub-line and zone reference lines, sector K-line/moneyflow collectors and APIs, and sector detail chart panel. Backend tests now 52 pass and frontend typecheck/build pass.
 - Added stock-detail money-flow view switcher: users can toggle between 主力（超大+大）, 仅超大单, 宽口径（超+大+中）, and 散户（小单）. `MoneyFlowPanel` and daily K-line histogram recompute from existing size breakdown fields; preference persists in localStorage; THS-only summary data disables non-main views with a clear note. Frontend typecheck/build pass.
 - Completed Stage 14 pre-pack QA: sector K-line/moneyflow 60s cache with stale fallback; per-code in-flight locks for daily K-line and moneyflow refresh; `test_stage14_regression.py` (60 backend tests pass); docs `stage14_regression_checklist.md`, `stage14_data_source_policy.md`, `stage14_known_limitations.md`; manual `scripts/refresh_watchlist_cache.py`; sector detail stale-cache UI hint. Frontend typecheck/build pass.
+- Implemented Stage 15 desktop installer infrastructure: app data dir + SQLite path via `VERTTRADE_DATA_DIR`; optional `settings.json`; PyInstaller sidecar (`backend/run_server.py`, `scripts/build_backend_sidecar.sh`); Electron packaged startup in `desktop/main.cjs`; `electron-builder` macOS/Windows config; `docs/stage15_desktop_installer.md`. Sidecar smoke on `:8001` returns `packaged: true`; backend tests 63 pass.
+- Fixed packaged Electron white screen: set Vite `base: './'` so `file://` loads `./assets/*` instead of broken absolute `/assets/*` paths.

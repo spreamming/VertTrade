@@ -35,6 +35,7 @@ app.add_middleware(
     allow_origins=[
         "http://127.0.0.1:5173",
         "http://localhost:5173",
+        "null",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -54,4 +55,6 @@ def health_check():
         "app": settings.app_name,
         "environment": settings.app_env,
         "database": database_status,
+        "data_dir": settings.data_dir,
+        "packaged": settings.packaged,
     }
