@@ -1,8 +1,12 @@
 import type { StockPosition } from "../api/client";
 
+const POSITION_WINDOWS = [250, 750, 1250] as const;
+
 type PositionCardProps = {
   position: StockPosition | null;
   loading?: boolean;
+  window: number;
+  onWindowChange: (window: number) => void;
 };
 
 function formatNumber(value: number | null | undefined, digits = 2): string {
@@ -25,7 +29,12 @@ function zoneClass(zone: string | undefined): string {
   return "position-neutral";
 }
 
-export function PositionCard({ position, loading = false }: PositionCardProps) {
+export function PositionCard({
+  position,
+  loading = false,
+  window: positionWindow,
+  onWindowChange,
+}: PositionCardProps) {
   if (loading && !position) {
     return <p className="loading-text">正在计算价格位置...</p>;
   }
@@ -45,9 +54,23 @@ export function PositionCard({ position, loading = false }: PositionCardProps) {
             基于最近 {position.window} 个交易日高低点计算，反映当前价格所处区间。
           </p>
         </div>
-        <span className={`position-badge ${zoneClass(position.zone)}`}>
-          {position.label}
-        </span>
+        <div className="position-header-actions">
+          <div className="period-switcher">
+            {POSITION_WINDOWS.map((windowOption) => (
+              <button
+                key={windowOption}
+                type="button"
+                className={windowOption === positionWindow ? "period-active" : ""}
+                onClick={() => onWindowChange(windowOption)}
+              >
+                {windowOption} 日
+              </button>
+            ))}
+          </div>
+          <span className={`position-badge ${zoneClass(position.zone)}`}>
+            {position.label}
+          </span>
+        </div>
       </div>
 
       <div className="position-meter" aria-label={`价格位置分数 ${score}`}>

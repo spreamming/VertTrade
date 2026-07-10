@@ -1,0 +1,15 @@
+{
+  "name": "verttrade-desktop",
+  "private": true,
+  "version": "0.1.0",
+  "description": "VertTrade private desktop shell proof of concept",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "build:frontend": "cd ../frontend && npm run build",
+    "start:poc": "npm run build:frontend && electron ."
+  },
+  "devDependencies": {
+    "electron": "latest"
+  }
+}

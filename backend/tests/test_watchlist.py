@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 
 import pandas as pd
 import pytest
@@ -9,10 +9,12 @@ from sqlalchemy.pool import StaticPool
 
 from backend.app.database import Base, get_db
 from backend.app.main import app
+from backend.app.services.market_overview_service import MarketOverviewService
 
 
 @pytest.fixture
 def client(monkeypatch):
+    MarketOverviewService.clear_cache()
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -91,11 +93,43 @@ def client(monkeypatch):
         "backend.app.services.stock_service.fetch_stock_moneyflow",
         fake_moneyflow,
     )
+    monkeypatch.setattr(
+        "backend.app.services.market_overview_service.fetch_major_indices",
+        lambda: [
+            {
+                "code": "000001",
+                "name": "上证指数",
+                "exchange": "SH",
+                "latest_price": 3952.49,
+                "change_amount": -18.39,
+                "change_percent": -0.46,
+                "volume": 330849707.0,
+                "amount": 790773120000.0,
+                "quote_time": datetime(2026, 7, 9, 11, 30),
+                "source": "tencent",
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        "backend.app.services.market_overview_service.fetch_market_breadth",
+        lambda: {
+            "rising_count": 799,
+            "falling_count": 4333,
+            "flat_count": 62,
+            "limit_up_count": 36,
+            "limit_down_count": 20,
+            "suspended_count": 9,
+            "activity_ratio": 15.36,
+            "as_of": datetime(2026, 7, 9, 11, 30),
+            "source": "legu",
+        },
+    )
 
     app.dependency_overrides[get_db] = override_get_db
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+    MarketOverviewService.clear_cache()
 
 
 def test_add_and_list_watchlist_item(client: TestClient):
@@ -147,4 +181,6 @@ def test_dashboard_returns_watchlist_summary(client: TestClient):
     assert payload["watchlist_summary"][0]["code"] == "600519"
     assert payload["watchlist_summary"][0]["position_label"] == "高位观察区"
     assert payload["watchlist_summary"][0]["main_net_inflow"] == 85000000.0
+    assert payload["market_overview"]["indices"][0]["name"] == "上证指数"
+    assert payload["market_breadth"]["rising_count"] == 799
     assert payload["market_notes"]

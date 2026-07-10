@@ -290,6 +290,14 @@ p {
   font-size: 14px;
 }
 
+.position-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .position-chip {
   padding: 4px 8px;
   background: #111827;
@@ -403,6 +411,42 @@ p {
   font-weight: 700;
 }
 
+.moneyflow-view-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.moneyflow-view-switcher button {
+  padding: 8px 10px;
+  border: 1px solid #334155;
+  border-radius: 999px;
+  background: #111827;
+  color: #cbd5e1;
+  cursor: pointer;
+}
+
+.moneyflow-view-switcher button:hover:not(:disabled),
+.moneyflow-view-switcher .period-active {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.14);
+  color: #f8fafc;
+}
+
+.moneyflow-view-switcher button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.moneyflow-breakdown {
+  margin-top: 16px;
+}
+
+.moneyflow-grid-compact dd {
+  font-size: 16px;
+}
+
 .flow-badge {
   display: inline-flex;
   align-items: center;
@@ -441,6 +485,89 @@ p {
   margin: 0 0 16px;
   color: #94a3b8;
   font-size: 15px;
+}
+
+.chart-meta {
+  margin-bottom: 16px;
+}
+
+.chart-meta-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.index-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.index-card {
+  padding: 14px 16px;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  background: #0f172a;
+}
+
+.index-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.index-card-header h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.index-code {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.index-price {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.index-change {
+  margin: 4px 0 8px;
+  font-size: 14px;
+}
+
+.index-meta {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.breadth-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.breadth-grid dt {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.breadth-grid dd {
+  margin: 4px 0 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.compact-notes {
+  margin-top: 12px;
 }
 
 .section-header {

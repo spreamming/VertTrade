@@ -2,11 +2,14 @@ import type {
   DashboardResponse,
   DailyReviewResponse,
   KlineResponse,
+  MarketOverviewResponse,
   MoneyflowResponse,
   RankingGroup,
   RankingItem,
   SectorDetailResponse,
+  SectorKlineResponse,
   SectorListResponse,
+  SectorMoneyflowResponse,
   SectorSummary,
   StockPosition,
   StockQuote,
@@ -15,7 +18,9 @@ import type {
   WatchlistItem,
 } from "../types/stock";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ??
+  (window.location.protocol === "file:" ? "http://127.0.0.1:8000" : "");
 
 export type HealthResponse = {
   status: string;
@@ -28,11 +33,14 @@ export type {
   DashboardResponse,
   DailyReviewResponse,
   KlineResponse,
+  MarketOverviewResponse,
   MoneyflowResponse,
   RankingGroup,
   RankingItem,
   SectorDetailResponse,
+  SectorKlineResponse,
   SectorListResponse,
+  SectorMoneyflowResponse,
   SectorSummary,
   StockPosition,
   StockQuote,
@@ -112,15 +120,29 @@ export async function getStockKline(
 export async function getStockIntradayKline(
   code: string,
   period = "1m",
+  refresh = false,
 ): Promise<KlineResponse> {
   const params = new URLSearchParams({ period });
+  if (refresh) {
+    params.set("refresh", "true");
+  }
   return request<KlineResponse>(
     `/api/stocks/${code}/kline/minute?${params.toString()}`,
   );
 }
 
-export async function getStockTimeshare(code: string): Promise<TimeShareResponse> {
-  return request<TimeShareResponse>(`/api/stocks/${code}/timeshare`);
+export async function getStockTimeshare(
+  code: string,
+  refresh = false,
+): Promise<TimeShareResponse> {
+  const params = new URLSearchParams();
+  if (refresh) {
+    params.set("refresh", "true");
+  }
+  const query = params.toString();
+  return request<TimeShareResponse>(
+    `/api/stocks/${code}/timeshare${query ? `?${query}` : ""}`,
+  );
 }
 
 export async function getStockQuote(
@@ -177,8 +199,22 @@ export async function getStockMoneyflow(
   );
 }
 
-export async function getDashboard(): Promise<DashboardResponse> {
-  return request<DashboardResponse>("/api/dashboard");
+export async function getDashboard(refresh = false): Promise<DashboardResponse> {
+  const params = new URLSearchParams();
+  if (refresh) {
+    params.set("refresh", "true");
+  }
+  const query = params.toString();
+  return request<DashboardResponse>(`/api/dashboard${query ? `?${query}` : ""}`);
+}
+
+export async function getMarketOverview(refresh = false): Promise<MarketOverviewResponse> {
+  const params = new URLSearchParams();
+  if (refresh) {
+    params.set("refresh", "true");
+  }
+  const query = params.toString();
+  return request<MarketOverviewResponse>(`/api/market/overview${query ? `?${query}` : ""}`);
 }
 
 export async function getDailyReview(): Promise<DailyReviewResponse> {
@@ -195,6 +231,24 @@ export async function getIndustrySector(
   const params = new URLSearchParams({ name: sector.name });
   return request<SectorDetailResponse>(
     `/api/sectors/industries/${sector.code}?${params.toString()}`,
+  );
+}
+
+export async function getIndustrySectorKline(
+  sector: SectorSummary,
+): Promise<SectorKlineResponse> {
+  const params = new URLSearchParams({ name: sector.name });
+  return request<SectorKlineResponse>(
+    `/api/sectors/industries/${sector.code}/kline?${params.toString()}`,
+  );
+}
+
+export async function getIndustrySectorMoneyflow(
+  sector: SectorSummary,
+): Promise<SectorMoneyflowResponse> {
+  const params = new URLSearchParams({ name: sector.name });
+  return request<SectorMoneyflowResponse>(
+    `/api/sectors/industries/${sector.code}/moneyflow?${params.toString()}`,
   );
 }
 

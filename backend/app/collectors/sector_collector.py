@@ -363,3 +363,71 @@ def fetch_industry_constituents_ths(symbol: str) -> pd.DataFrame:
     ]
     result.attrs["source"] = "akshare_ths"
     return result
+
+
+_EASTMONEY_BOARD_CACHE_TTL_SECONDS = 3600
+_eastmoney_board_cache: tuple[float, dict[str, str]] | None = None
+
+
+def _load_eastmoney_board_codes() -> dict[str, str]:
+    global _eastmoney_board_cache
+    if _eastmoney_board_cache is not None:
+        cached_at, mapping = _eastmoney_board_cache
+        if time.monotonic() - cached_at <= _EASTMONEY_BOARD_CACHE_TTL_SECONDS:
+            return mapping
+
+    mapping: dict[str, str] = {}
+    for host in (
+        "https://82.push2.eastmoney.com",
+        "https://81.push2.eastmoney.com",
+        "https://push2.eastmoney.com",
+    ):
+        try:
+            page = 1
+            while page <= 10:
+                with without_system_proxy():
+                    response = requests.get(
+                        f"{host}/api/qt/clist/get",
+                        params={
+                            "pn": str(page),
+                            "pz": "100",
+                            "po": "1",
+                            "np": "1",
+                            "fltt": "2",
+                            "invt": "2",
+                            "fid": "f3",
+                            "fs": "m:90+t:2",
+                            "fields": "f12,f14",
+                        },
+                        timeout=8,
+                    )
+                response.raise_for_status()
+                items = response.json().get("data", {}).get("diff", []) or []
+                if not items:
+                    break
+                for item in items:
+                    name = item.get("f14")
+                    code = item.get("f12")
+                    if name and code:
+                        mapping[str(name)] = str(code)
+                page += 1
+            if mapping:
+                break
+        except requests.RequestException:
+            continue
+
+    if not mapping:
+        raise SectorDataSourceError("暂时无法解析东方财富板块代码")
+
+    _eastmoney_board_cache = (time.monotonic(), mapping)
+    return mapping
+
+
+def _resolve_eastmoney_board_code(name: str) -> str | None:
+    if name.upper().startswith("BK"):
+        return name.upper()
+    try:
+        mapping = _load_eastmoney_board_codes()
+    except SectorDataSourceError:
+        return None
+    return mapping.get(name)

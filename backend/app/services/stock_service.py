@@ -39,8 +39,14 @@ class StockService:
     # Calendar-day tolerance before treating cached K-line end as stale (weekends/holidays).
     _CACHE_END_TOLERANCE_DAYS = 4
     _LIVE_QUOTE_TTL_SECONDS = 3
+    _INTRADAY_KLINE_TTL_SECONDS = 20
+    _TIMESHARE_TTL_SECONDS = 15
     _live_quote_cache: dict[str, tuple[datetime, StockQuote]] = {}
+    _intraday_kline_cache: dict[tuple[str, str], tuple[datetime, KlineResponse]] = {}
+    _timeshare_cache: dict[str, tuple[datetime, TimeShareResponse]] = {}
     _live_quote_locks: dict[str, Lock] = {}
+    _kline_fetch_locks: dict[str, Lock] = {}
+    _moneyflow_fetch_locks: dict[str, Lock] = {}
     _live_quote_locks_guard = Lock()
 
     def __init__(self, db: Session):
@@ -75,6 +81,68 @@ class StockService:
             for stock in matches
         ]
 
+    @classmethod
+    def _fetch_lock_for_code(cls, code: str, kind: str) -> Lock:
+        with cls._live_quote_locks_guard:
+            locks = cls._kline_fetch_locks if kind == "kline" else cls._moneyflow_fetch_locks
+            if code not in locks:
+                locks[code] = Lock()
+            return locks[code]
+
+    def _kline_needs_fetch(
+        self,
+        code: str,
+        start_date: date,
+        end_date: date,
+        *,
+        refresh: bool,
+        start: date | None,
+    ) -> tuple[list, bool]:
+        cached = self.kline_repo.get_range(code, start_date, end_date)
+        latest_cached_date = cached[-1].trade_date if cached else None
+        start_not_covered = (
+            start is not None and cached and cached[0].trade_date > start_date
+        )
+        end_is_stale = (
+            latest_cached_date is not None
+            and self._cache_end_is_stale(latest_cached_date, end_date)
+        )
+        needs_fetch = refresh or not cached or start_not_covered or end_is_stale
+        return cached, needs_fetch
+
+    def _refresh_kline_cache(
+        self,
+        code: str,
+        start_date: date,
+        end_date: date,
+    ) -> list:
+        try:
+            frame = fetch_daily_kline(code, start_date, end_date)
+        except requests.RequestException as exc:
+            cached = self.kline_repo.get_range(code, start_date, end_date)
+            if cached:
+                return cached
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "暂时无法从数据源获取行情数据，"
+                    "请检查网络连接后重试。"
+                ),
+            ) from exc
+
+        if frame.empty:
+            cached = self.kline_repo.get_range(code, start_date, end_date)
+            if not cached:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"暂无 {code} 的 K 线数据",
+                )
+            return cached
+
+        rows = frame.to_dict(orient="records")
+        self.kline_repo.replace_range(code, rows)
+        return self.kline_repo.get_range(code, start_date, end_date)
+
     def get_kline(
         self,
         code: str,
@@ -90,41 +158,25 @@ class StockService:
         end_date = end or date.today()
         start_date = start or (end_date - timedelta(days=365))
 
-        cached = self.kline_repo.get_range(code, start_date, end_date)
-        latest_cached_date = cached[-1].trade_date if cached else None
-        start_not_covered = (
-            start is not None and cached and cached[0].trade_date > start_date
+        cached, needs_fetch = self._kline_needs_fetch(
+            code,
+            start_date,
+            end_date,
+            refresh=refresh,
+            start=start,
         )
-        end_is_stale = (
-            latest_cached_date is not None
-            and self._cache_end_is_stale(latest_cached_date, end_date)
-        )
-        needs_fetch = refresh or not cached or start_not_covered or end_is_stale
         if needs_fetch:
-            try:
-                frame = fetch_daily_kline(code, start_date, end_date)
-            except requests.RequestException as exc:
-                if cached:
-                    frame = None
-                else:
-                    raise HTTPException(
-                        status_code=503,
-                        detail=(
-                            "暂时无法从数据源获取行情数据，"
-                            "请检查网络连接后重试。"
-                        ),
-                    ) from exc
-            else:
-                if frame.empty:
-                    if not cached:
-                        raise HTTPException(
-                            status_code=404,
-                            detail=f"暂无 {code} 的 K 线数据",
-                        )
-                else:
-                    rows = frame.to_dict(orient="records")
-                    self.kline_repo.replace_range(code, rows)
-                    cached = self.kline_repo.get_range(code, start_date, end_date)
+            lock = self._fetch_lock_for_code(code, "kline")
+            with lock:
+                cached, needs_fetch = self._kline_needs_fetch(
+                    code,
+                    start_date,
+                    end_date,
+                    refresh=refresh,
+                    start=start,
+                )
+                if needs_fetch:
+                    cached = self._refresh_kline_cache(code, start_date, end_date)
 
         bars = [
             KlineBar(
@@ -142,7 +194,29 @@ class StockService:
 
         return KlineResponse(code=stock.code, name=stock.name, bars=bars)
 
-    def get_intraday_kline(self, code: str, period: str = "1m") -> KlineResponse:
+    @staticmethod
+    def _with_cache_metadata(
+        response: KlineResponse | TimeShareResponse,
+        cached_at: datetime,
+        now: datetime,
+        *,
+        is_stale: bool,
+    ) -> KlineResponse | TimeShareResponse:
+        cache_age = (now - cached_at).total_seconds()
+        return response.model_copy(
+            update={
+                "cache_time": cached_at,
+                "is_stale": is_stale,
+                "cache_age_seconds": cache_age,
+            }
+        )
+
+    def get_intraday_kline(
+        self,
+        code: str,
+        period: str = "1m",
+        refresh: bool = False,
+    ) -> KlineResponse:
         if period not in ("1m", "5m", "15m", "30m", "60m"):
             raise HTTPException(
                 status_code=400,
@@ -154,9 +228,31 @@ class StockService:
         if stock is None:
             raise HTTPException(status_code=404, detail=f"未找到股票 {code}")
 
+        cache_key = (code, period)
+        cached = self._intraday_kline_cache.get(cache_key)
+        now = datetime.now()
+        if not refresh and cached:
+            cached_at, cached_response = cached
+            cache_age = (now - cached_at).total_seconds()
+            if cache_age <= self._INTRADAY_KLINE_TTL_SECONDS:
+                return self._with_cache_metadata(
+                    cached_response,
+                    cached_at,
+                    now,
+                    is_stale=False,
+                )
+
         try:
-            frame = fetch_intraday_kline(code, period=period)
+            frame, source = fetch_intraday_kline(code, period=period)
         except (requests.RequestException, ValueError) as exc:
+            if cached:
+                cached_at, cached_response = cached
+                return self._with_cache_metadata(
+                    cached_response,
+                    cached_at,
+                    now,
+                    is_stale=True,
+                )
             raise HTTPException(
                 status_code=503,
                 detail="暂时无法从数据源获取分钟 K 数据，请稍后重试。",
@@ -176,17 +272,49 @@ class StockService:
             for row in frame.to_dict(orient="records")
         ]
 
-        return KlineResponse(code=stock.code, name=stock.name, period=period, bars=bars)
+        response = KlineResponse(
+            code=stock.code,
+            name=stock.name,
+            period=period,
+            bars=bars,
+            source=source,
+            cache_time=now,
+            is_stale=False,
+            cache_age_seconds=0,
+        )
+        self._intraday_kline_cache[cache_key] = (now, response)
+        return response
 
-    def get_timeshare(self, code: str) -> TimeShareResponse:
+    def get_timeshare(self, code: str, refresh: bool = False) -> TimeShareResponse:
         self.ensure_stock_catalog()
         stock = self.stock_repo.get_by_code(code)
         if stock is None:
             raise HTTPException(status_code=404, detail=f"未找到股票 {code}")
 
+        cached = self._timeshare_cache.get(code)
+        now = datetime.now()
+        if not refresh and cached:
+            cached_at, cached_response = cached
+            cache_age = (now - cached_at).total_seconds()
+            if cache_age <= self._TIMESHARE_TTL_SECONDS:
+                return self._with_cache_metadata(
+                    cached_response,
+                    cached_at,
+                    now,
+                    is_stale=False,
+                )
+
         try:
-            frame = fetch_timeshare(code)
+            frame, source = fetch_timeshare(code)
         except (requests.RequestException, ValueError) as exc:
+            if cached:
+                cached_at, cached_response = cached
+                return self._with_cache_metadata(
+                    cached_response,
+                    cached_at,
+                    now,
+                    is_stale=True,
+                )
             raise HTTPException(
                 status_code=503,
                 detail="暂时无法从数据源获取分时图数据，请稍后重试。",
@@ -202,7 +330,17 @@ class StockService:
             )
             for row in frame.to_dict(orient="records")
         ]
-        return TimeShareResponse(code=stock.code, name=stock.name, points=points)
+        response = TimeShareResponse(
+            code=stock.code,
+            name=stock.name,
+            source=source,
+            points=points,
+            cache_time=now,
+            is_stale=False,
+            cache_age_seconds=0,
+        )
+        self._timeshare_cache[code] = (now, response)
+        return response
 
     def _build_quote_from_kline(self, kline: KlineResponse, code: str) -> StockQuote:
         if not kline.bars:
@@ -382,6 +520,56 @@ class StockService:
         position = self._build_position_from_kline(kline, code, window)
         return quote, position
 
+    def _moneyflow_needs_fetch(
+        self,
+        code: str,
+        start_date: date,
+        end_date: date,
+        *,
+        refresh: bool,
+        start: date | None,
+    ) -> tuple[list, bool]:
+        cached = self.moneyflow_repo.get_range(code, start_date, end_date)
+        latest_cached_date = cached[-1].trade_date if cached else None
+        start_not_covered = (
+            start is not None and cached and cached[0].trade_date > start_date
+        )
+        end_is_stale = (
+            latest_cached_date is not None
+            and self._cache_end_is_stale(latest_cached_date, end_date)
+        )
+        needs_fetch = refresh or not cached or start_not_covered or end_is_stale
+        return cached, needs_fetch
+
+    def _refresh_moneyflow_cache(
+        self,
+        code: str,
+        exchange: str,
+        start_date: date,
+        end_date: date,
+    ) -> list:
+        try:
+            frame = fetch_stock_moneyflow(code, exchange)
+        except (requests.RequestException, MoneyflowDataSourceError) as exc:
+            cached = self.moneyflow_repo.get_range(code, start_date, end_date)
+            if not cached:
+                raise HTTPException(
+                    status_code=503,
+                    detail=(
+                        "暂时无法从数据源获取资金流数据，"
+                        "请检查网络连接后重试。"
+                    ),
+                ) from exc
+            return cached
+
+        if frame.empty:
+            cached = self.moneyflow_repo.get_range(code, start_date, end_date)
+            return cached or []
+
+        rows = frame.to_dict(orient="records")
+        self.moneyflow_repo.replace_range(code, rows)
+        return self.moneyflow_repo.get_range(code, start_date, end_date)
+
     def get_moneyflow(
         self,
         code: str,
@@ -397,37 +585,30 @@ class StockService:
         end_date = end or date.today()
         start_date = start or (end_date - timedelta(days=365))
 
-        cached = self.moneyflow_repo.get_range(code, start_date, end_date)
-        latest_cached_date = cached[-1].trade_date if cached else None
-        start_not_covered = (
-            start is not None and cached and cached[0].trade_date > start_date
+        cached, needs_fetch = self._moneyflow_needs_fetch(
+            code,
+            start_date,
+            end_date,
+            refresh=refresh,
+            start=start,
         )
-        end_is_stale = (
-            latest_cached_date is not None
-            and self._cache_end_is_stale(latest_cached_date, end_date)
-        )
-        needs_fetch = refresh or not cached or start_not_covered or end_is_stale
-
         if needs_fetch:
-            try:
-                frame = fetch_stock_moneyflow(code, stock.exchange)
-            except (requests.RequestException, MoneyflowDataSourceError) as exc:
-                if not cached:
-                    raise HTTPException(
-                        status_code=503,
-                        detail=(
-                            "暂时无法从数据源获取资金流数据，"
-                            "请检查网络连接后重试。"
-                        ),
-                    ) from exc
-            else:
-                if frame.empty:
-                    if not cached:
-                        cached = []
-                else:
-                    rows = frame.to_dict(orient="records")
-                    self.moneyflow_repo.replace_range(code, rows)
-                    cached = self.moneyflow_repo.get_range(code, start_date, end_date)
+            lock = self._fetch_lock_for_code(code, "moneyflow")
+            with lock:
+                cached, needs_fetch = self._moneyflow_needs_fetch(
+                    code,
+                    start_date,
+                    end_date,
+                    refresh=refresh,
+                    start=start,
+                )
+                if needs_fetch:
+                    cached = self._refresh_moneyflow_cache(
+                        code,
+                        stock.exchange,
+                        start_date,
+                        end_date,
+                    )
 
         bars = [
             MoneyflowBar(

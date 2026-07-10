@@ -34,7 +34,8 @@ The recommended development path is:
 2. Implement K-line, watchlist, price-position, and money-flow MVP features.
 3. Add sectors, rankings, and daily review workflows.
 4. Add near real-time market watch features: live quotes, intraday K-line, time-sharing chart, and watchlist fast refresh.
-5. Package the stable local app as a private desktop application.
+5. Complete remaining analysis features (Stages 11–14): watch polish, market overview, analysis UX, pre-pack QA.
+6. Package the stable local app as a private desktop application (Stage 15 installer).
 
 ## Git Commit Policy (IMPORTANT)
 
@@ -55,7 +56,7 @@ Older pushed commits before `dd0b997` may still contain Cursor co-author trailer
 - GitHub repo: `https://github.com/spreamming/VertTrade.git`
 - Local branch: `main`
 - Remote: `origin`
-- Latest pushed commit on `main`: `0bef8b7 minute k-line mvp`
+- Latest pushed commit on `main`: `96b64da time-sharing chart mvp`
 - Correct Git identity for commits: `spreamming <fredspream@gmail.com>`
 - Repo-local Git identity is configured in `.git/config` so future commits in this repo use the correct author.
 
@@ -80,7 +81,7 @@ Initial scaffold already created:
 
 Dependencies have been installed locally.
 
-Stage 0 through Stage 9 stability baseline and Path B minute K-line MVP are complete and pushed. Path B time-sharing chart MVP is implemented locally and ready to commit.
+Stage 0 through Stage 13 are complete. **Current focus: Stage 15 formal installer (Stage 14 pre-pack QA complete).**
 
 Current verification commands have passed:
 
@@ -183,3 +184,11 @@ Current verification commands have passed:
 - Applied minute K checker suggestions: unsupported minute periods now return HTTP 400 with a clear Chinese validation message, and stock detail period switching reloads only K-line data instead of reloading daily price position/money-flow. Backend tests now 43 pass and frontend typecheck/build pass.
 - Committed and pushed `0bef8b7 minute k-line mvp` without any `Co-authored-by` trailer (recreated via `commit-tree` after Cursor injected co-author on first attempt). Verified 43 backend tests, frontend typecheck, and push to `origin/main`.
 - Continued Path B with time-sharing chart MVP: added Tencent time-sharing collector, `/api/stocks/{code}/timeshare`, `TimeShareChart` with price line, average-price line, and intraday volume, plus stock detail “分时” period option. Live smoke for `600519` returned 267 points; backend tests now 44 pass and frontend typecheck/build pass.
+- Committed and pushed `96b64da time-sharing chart mvp` without any `Co-authored-by` trailer (recreated via `commit-tree` after Cursor injected co-author on first attempt). Verified 44 backend tests, frontend typecheck, and push to `origin/main`.
+- Implemented Stage 10 Electron desktop shell POC: added `desktop/` package with Electron, main/preload scripts, frontend production build loading, backend sidecar startup via `.venv`, and desktop README. Frontend API client now defaults to `http://127.0.0.1:8000` when loaded from `file://`. Verified `npm install` in desktop, frontend production build, Electron main/preload syntax checks, backend tests, and frontend typecheck/build.
+- Updated development plan per user decision (2026-07-08): defer formal desktop installer to Stage 15; add Stages 11–14 for feature completion before packaging (watch polish, market overview, analysis UX, pre-pack QA). Stage 10 Electron POC remains reference-only; daily dev continues via local web app.
+- Implemented Stage 11 realtime watch polish: added 20-second in-memory cache for minute K with stale fallback, Eastmoney fallback for time-sharing chart with 15-second cache, `refresh=true` on minute/timeshare APIs, source/cache metadata on responses, and StockDetail UI labels plus 15–20s auto-refresh for intraday chart views. Backend tests now 47 pass and frontend typecheck/build pass.
+- Implemented Stage 12 market overview: added major index collector (Tencent), market breadth collector (Legu via AKShare), `MarketOverviewService` with cache/stale fallback, `/api/market/overview`, Dashboard `MarketOverviewPanel` with index cards and breadth stats, and 15-second auto-refresh with localStorage fallback. Backend tests now 50 pass and frontend typecheck/build pass.
+- Implemented Stage 13 analysis UX polish: added price-position window switcher (250/750/1250), daily K-line position score sub-line and zone reference lines, sector K-line/moneyflow collectors and APIs, and sector detail chart panel. Backend tests now 52 pass and frontend typecheck/build pass.
+- Added stock-detail money-flow view switcher: users can toggle between 主力（超大+大）, 仅超大单, 宽口径（超+大+中）, and 散户（小单）. `MoneyFlowPanel` and daily K-line histogram recompute from existing size breakdown fields; preference persists in localStorage; THS-only summary data disables non-main views with a clear note. Frontend typecheck/build pass.
+- Completed Stage 14 pre-pack QA: sector K-line/moneyflow 60s cache with stale fallback; per-code in-flight locks for daily K-line and moneyflow refresh; `test_stage14_regression.py` (60 backend tests pass); docs `stage14_regression_checklist.md`, `stage14_data_source_policy.md`, `stage14_known_limitations.md`; manual `scripts/refresh_watchlist_cache.py`; sector detail stale-cache UI hint. Frontend typecheck/build pass.

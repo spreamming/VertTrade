@@ -6,14 +6,17 @@ import {
   getDashboard,
   getDailyReview,
   getIndustrySectors,
+  getMarketOverview,
   getStockLiveQuote,
   type DashboardResponse,
   type DailyReviewResponse,
+  type MarketOverviewResponse,
   type SectorSummary,
   type StockQuote,
   type StockSummary,
   type WatchlistItem,
 } from "../api/client";
+import { MarketOverviewPanel } from "../components/MarketOverviewPanel";
 import { SearchBox } from "../components/SearchBox";
 import { SectorPanel } from "../components/SectorPanel";
 import { RankingPanel } from "../components/RankingPanel";
@@ -27,6 +30,7 @@ type DashboardProps = {
 
 const MAX_AUTO_REFRESH_WATCHLIST = 20;
 const DASHBOARD_CACHE_KEY = "verttrade:lastDashboard";
+const MARKET_OVERVIEW_CACHE_KEY = "verttrade:lastMarketOverview";
 const SECTOR_CACHE_KEY = "verttrade:lastIndustrySectors";
 const REVIEW_CACHE_KEY = "verttrade:lastDailyReview";
 const BACKGROUND_RETRY_MS = 15000;
@@ -91,6 +95,11 @@ export function Dashboard({ onOpenStock, onOpenSector }: DashboardProps) {
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(() =>
     readStoredValue<DashboardResponse>(DASHBOARD_CACHE_KEY),
   );
+  const [marketOverview, setMarketOverview] = useState<MarketOverviewResponse | null>(() =>
+    readStoredValue<MarketOverviewResponse>(MARKET_OVERVIEW_CACHE_KEY)
+      ?? readStoredValue<DashboardResponse>(DASHBOARD_CACHE_KEY)?.market_overview
+      ?? null,
+  );
   const [dailyReview, setDailyReview] = useState<DailyReviewResponse | null>(() =>
     readStoredValue<DailyReviewResponse>(REVIEW_CACHE_KEY),
   );
@@ -104,6 +113,10 @@ export function Dashboard({ onOpenStock, onOpenSector }: DashboardProps) {
   const [loading, setLoading] = useState(() => {
     return readStoredValue<DashboardResponse>(DASHBOARD_CACHE_KEY) === null;
   });
+  const [marketOverviewLoading, setMarketOverviewLoading] = useState(() => {
+    return readStoredValue<MarketOverviewResponse>(MARKET_OVERVIEW_CACHE_KEY) === null
+      && readStoredValue<DashboardResponse>(DASHBOARD_CACHE_KEY)?.market_overview == null;
+  });
   const [reviewLoading, setReviewLoading] = useState(() => {
     return readStoredValue<DailyReviewResponse>(REVIEW_CACHE_KEY) === null;
   });
@@ -112,6 +125,7 @@ export function Dashboard({ onOpenStock, onOpenSector }: DashboardProps) {
   });
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [marketOverviewError, setMarketOverviewError] = useState<string | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [sectorsError, setSectorsError] = useState<string | null>(null);
   const [dashboardRetrying, setDashboardRetrying] = useState(false);
@@ -129,8 +143,11 @@ export function Dashboard({ onOpenStock, onOpenSector }: DashboardProps) {
     try {
       const response = await getDashboard();
       setDashboard(response);
+      setMarketOverview(response.market_overview);
       writeStoredValue(DASHBOARD_CACHE_KEY, response);
+      writeStoredValue(MARKET_OVERVIEW_CACHE_KEY, response.market_overview);
       setError(null);
+      setMarketOverviewError(null);
     } catch (err: unknown) {
       const cached = readStoredValue<DashboardResponse>(DASHBOARD_CACHE_KEY);
       if (cached) {
@@ -144,6 +161,32 @@ export function Dashboard({ onOpenStock, onOpenSector }: DashboardProps) {
         setDashboardRetrying(false);
       } else {
         setLoading(false);
+      }
+    }
+  }, []);
+
+  const loadMarketOverview = useCallback(async (refresh = false, background = false) => {
+    if (!background) {
+      setMarketOverviewLoading(true);
+      setMarketOverviewError(null);
+    }
+
+    try {
+      const response = await getMarketOverview(refresh);
+      setMarketOverview(response);
+      writeStoredValue(MARKET_OVERVIEW_CACHE_KEY, response);
+      setMarketOverviewError(null);
+    } catch (err: unknown) {
+      const cached = readStoredValue<MarketOverviewResponse>(MARKET_OVERVIEW_CACHE_KEY);
+      if (cached) {
+        setMarketOverview(cached);
+        setMarketOverviewError("市场概览刷新失败，已显示上次成功数据。");
+      } else {
+        setMarketOverviewError(err instanceof Error ? err.message : "加载市场概览失败");
+      }
+    } finally {
+      if (!background) {
+        setMarketOverviewLoading(false);
       }
     }
   }, []);
@@ -219,6 +262,7 @@ export function Dashboard({ onOpenStock, onOpenSector }: DashboardProps) {
 
   useEffect(() => {
     void loadDashboard(dashboard !== null);
+    void loadMarketOverview(marketOverview !== null, marketOverview !== null);
     void loadDailyReview(dailyReview !== null);
     void loadSectors(sectors.length > 0);
     // Initial load only. Cached ranking/sector data should render immediately;
@@ -227,13 +271,24 @@ export function Dashboard({ onOpenStock, onOpenSector }: DashboardProps) {
   }, []);
 
   useEffect(() => {
-    if (!error && !reviewError && !sectorsError) {
+    const intervalId = window.setInterval(() => {
+      void loadMarketOverview(false, true);
+    }, 15000);
+
+    return () => window.clearInterval(intervalId);
+  }, [loadMarketOverview]);
+
+  useEffect(() => {
+    if (!error && !reviewError && !sectorsError && !marketOverviewError) {
       return;
     }
 
     const intervalId = window.setInterval(() => {
       if (error) {
         void loadDashboard(true);
+      }
+      if (marketOverviewError) {
+        void loadMarketOverview(false, true);
       }
       if (reviewError) {
         void loadDailyReview(true);
@@ -244,7 +299,16 @@ export function Dashboard({ onOpenStock, onOpenSector }: DashboardProps) {
     }, BACKGROUND_RETRY_MS);
 
     return () => window.clearInterval(intervalId);
-  }, [error, loadDashboard, loadDailyReview, loadSectors, reviewError, sectorsError]);
+  }, [
+    error,
+    loadDashboard,
+    loadDailyReview,
+    loadMarketOverview,
+    loadSectors,
+    marketOverviewError,
+    reviewError,
+    sectorsError,
+  ]);
 
   useEffect(() => {
     const items = dashboard?.watchlist_summary ?? [];
@@ -351,10 +415,16 @@ export function Dashboard({ onOpenStock, onOpenSector }: DashboardProps) {
         <p className="eyebrow">个人 A 股看盘工具</p>
         <h1>VertTrade</h1>
         <p>
-          首页用于维护自选股，并快速查看自选股、行业板块和资金流观察维度。
-          后续会继续加入主要指数、市场概览和复盘页面。
+          首页用于维护自选股，并快速查看大盘指数、市场广度、行业板块和每日复盘。
         </p>
       </section>
+
+      <MarketOverviewPanel
+        overview={marketOverview}
+        loading={marketOverviewLoading}
+        error={marketOverviewError}
+        onRefresh={() => void loadMarketOverview(true, false)}
+      />
 
       <section className="dashboard-grid">
         <div className="status-card">
@@ -429,15 +499,6 @@ export function Dashboard({ onOpenStock, onOpenSector }: DashboardProps) {
         onRefresh={loadSectors}
         onOpenSector={onOpenSector}
       />
-
-      <section className="status-card wide-card">
-        <h2>市场概览</h2>
-        <ul className="stage-list">
-          {(dashboard?.market_notes ?? ["市场概览将在后续阶段接入。"]).map((note) => (
-            <li key={note}>{note}</li>
-          ))}
-        </ul>
-      </section>
     </main>
   );
 }

@@ -49,6 +49,10 @@ class KlineResponse(BaseModel):
     name: str
     period: str = "daily"
     bars: list[KlineBar] = Field(default_factory=list)
+    source: str | None = None
+    cache_time: datetime | None = None
+    is_stale: bool = False
+    cache_age_seconds: float | None = None
 
 
 class TimeSharePoint(BaseModel):
@@ -64,6 +68,9 @@ class TimeShareResponse(BaseModel):
     name: str
     source: str = "tencent"
     points: list[TimeSharePoint] = Field(default_factory=list)
+    cache_time: datetime | None = None
+    is_stale: bool = False
+    cache_age_seconds: float | None = None
 
 
 class StockPosition(BaseModel):

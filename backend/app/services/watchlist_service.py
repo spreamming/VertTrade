@@ -6,6 +6,7 @@ from ..repositories.stock_repo import StockRepository
 from ..repositories.watchlist_repo import WatchlistRepository
 from ..schemas.stock import MoneyflowBar, StockPosition, StockQuote
 from ..schemas.watchlist import DashboardResponse, WatchlistCreate, WatchlistItemResponse
+from .market_overview_service import MarketOverviewService
 from .stock_service import StockService
 
 
@@ -15,6 +16,7 @@ class WatchlistService:
         self.watchlist_repo = WatchlistRepository(db)
         self.stock_repo = StockRepository(db)
         self.stock_service = StockService(db)
+        self.market_overview_service = MarketOverviewService()
 
     def list_items(self) -> list[WatchlistItemResponse]:
         self.stock_service.ensure_stock_catalog()
@@ -37,15 +39,16 @@ class WatchlistService:
         if not self.watchlist_repo.delete(item_id):
             raise HTTPException(status_code=404, detail=f"未找到自选股记录 {item_id}")
 
-    def get_dashboard(self) -> DashboardResponse:
+    def get_dashboard(self, refresh: bool = False) -> DashboardResponse:
         items = self.list_items()
+        market_overview = self.market_overview_service.get_market_overview(refresh=refresh)
         return DashboardResponse(
             watchlist_count=self.watchlist_repo.count(),
             watchlist_summary=items,
-            indices=[],
-            market_notes=[
-                "主要指数、市场涨跌家数和板块概览将在后续阶段接入。",
-            ],
+            market_overview=market_overview,
+            indices=market_overview.indices,
+            market_breadth=market_overview.breadth,
+            market_notes=market_overview.notes,
         )
 
     def _to_response(self, item: WatchlistItem) -> WatchlistItemResponse:

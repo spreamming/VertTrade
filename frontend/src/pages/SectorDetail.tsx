@@ -2,10 +2,15 @@ import { useCallback, useEffect, useState } from "react";
 
 import {
   getIndustrySector,
+  getIndustrySectorKline,
+  getIndustrySectorMoneyflow,
   type SectorDetailResponse,
+  type SectorKlineResponse,
+  type SectorMoneyflowResponse,
   type SectorSummary,
   type StockSummary,
 } from "../api/client";
+import { KLineChart } from "../components/KLineChart";
 import { formatMoneyAmount } from "../utils/money";
 
 type SectorDetailProps = {
@@ -59,9 +64,13 @@ export function SectorDetail({ sector, onBack, onOpenStock }: SectorDetailProps)
   const [detail, setDetail] = useState<SectorDetailResponse | null>(() =>
     readCachedSectorDetail(sector),
   );
+  const [kline, setKline] = useState<SectorKlineResponse | null>(null);
+  const [moneyflow, setMoneyflow] = useState<SectorMoneyflowResponse | null>(null);
   const [loading, setLoading] = useState(() => readCachedSectorDetail(sector) === null);
+  const [chartsLoading, setChartsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [chartsError, setChartsError] = useState<string | null>(null);
 
   const loadSector = useCallback(async (background = false) => {
     if (background) {
@@ -91,11 +100,29 @@ export function SectorDetail({ sector, onBack, onOpenStock }: SectorDetailProps)
     }
   }, [detail, sector]);
 
+  const loadCharts = useCallback(async () => {
+    setChartsLoading(true);
+    setChartsError(null);
+
+    try {
+      const [klineData, moneyflowData] = await Promise.all([
+        getIndustrySectorKline(sector),
+        getIndustrySectorMoneyflow(sector),
+      ]);
+      setKline(klineData);
+      setMoneyflow(moneyflowData);
+    } catch (err: unknown) {
+      setChartsError(err instanceof Error ? err.message : "加载板块图表失败");
+    } finally {
+      setChartsLoading(false);
+    }
+  }, [sector]);
+
   useEffect(() => {
     void loadSector(detail !== null);
-    // Initial mount only: render cached constituents immediately, then refresh.
+    void loadCharts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [sector.code, sector.name]);
 
   const detailSourceText =
     detail?.source === "akshare_ths" ? "同花顺（AKShare）" : "东方财富（AKShare）";
@@ -119,14 +146,45 @@ export function SectorDetail({ sector, onBack, onOpenStock }: SectorDetailProps)
         <button
           type="button"
           className="refresh-button"
-          onClick={() => void loadSector(false)}
-          disabled={loading || refreshing}
+          onClick={() => {
+            void loadSector(false);
+            void loadCharts();
+          }}
+          disabled={loading || refreshing || chartsLoading}
         >
           {refreshing ? "刷新中..." : "刷新"}
         </button>
       </header>
 
       {error ? <p className="search-error">{error}</p> : null}
+      {chartsError ? <p className="table-note">{chartsError}</p> : null}
+
+      <section className="status-card wide-card chart-panel">
+        <div className="section-header">
+          <div>
+            <h2>板块 K 线与资金流</h2>
+            <p className="section-copy">
+              板块 K 线优先来自同花顺，fallback 到东方财富；板块资金流来自东方财富，仅作观察参考。
+            </p>
+          </div>
+        </div>
+        {chartsLoading && !kline ? <p className="loading-text">正在加载板块图表...</p> : null}
+        {kline && kline.bars.length > 0 ? (
+          <>
+            <KLineChart bars={kline.bars} moneyflowBars={moneyflow?.bars ?? []} />
+            <div className="chart-meta-grid">
+              <span>K 线来源：{kline.source === "akshare_ths" ? "同花顺（AKShare）" : "东方财富"}</span>
+              {kline.is_stale ? <span className="table-note">K 线显示上次成功缓存</span> : null}
+              {moneyflow ? (
+                <span>
+                  资金流来源：东方财富 · {moneyflow.bars.length} 个交易日
+                  {moneyflow.is_stale ? " · 显示上次成功缓存" : ""}
+                </span>
+              ) : null}
+            </div>
+          </>
+        ) : null}
+      </section>
 
       <section className="quote-grid">
         <div>

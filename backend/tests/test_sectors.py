@@ -1,3 +1,5 @@
+from datetime import date
+
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
@@ -75,6 +77,53 @@ def client(monkeypatch):
         "backend.app.services.sector_service.fetch_industry_constituents",
         fake_constituents,
     )
+    monkeypatch.setattr(
+        "backend.app.services.sector_service.fetch_sector_kline",
+        lambda name, start_date=None, end_date=None: (
+            pd.DataFrame(
+                [
+                    {
+                        "trade_date": "2026-07-01",
+                        "open": 100.0,
+                        "high": 105.0,
+                        "low": 99.0,
+                        "close": 103.0,
+                        "volume": 1000.0,
+                        "amount": 100000.0,
+                        "turnover_rate": None,
+                    },
+                    {
+                        "trade_date": "2026-07-02",
+                        "open": 103.0,
+                        "high": 106.0,
+                        "low": 102.0,
+                        "close": 105.0,
+                        "volume": 1200.0,
+                        "amount": 120000.0,
+                        "turnover_rate": None,
+                    },
+                ]
+            ),
+            "akshare_ths",
+        ),
+    )
+    monkeypatch.setattr(
+        "backend.app.services.sector_service.fetch_sector_moneyflow",
+        lambda name, limit=120: pd.DataFrame(
+            [
+                {
+                    "trade_date": date(2026, 7, 1),
+                    "main_net_inflow": 100000000.0,
+                    "main_net_ratio": 2.5,
+                },
+                {
+                    "trade_date": date(2026, 7, 2),
+                    "main_net_inflow": -50000000.0,
+                    "main_net_ratio": -1.2,
+                },
+            ]
+        ),
+    )
 
     with TestClient(app) as test_client:
         yield test_client
@@ -104,6 +153,34 @@ def test_get_industry_sector_constituents(client: TestClient):
     assert len(payload["constituents"]) == 2
     assert payload["constituents"][0]["code"] == "600519"
     assert payload["constituents"][1]["exchange"] == "SZ"
+
+
+def test_get_industry_sector_kline(client: TestClient):
+    response = client.get(
+        "/api/sectors/industries/BK1027/kline",
+        params={"name": "小金属"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["name"] == "小金属"
+    assert payload["source"] == "akshare_ths"
+    assert len(payload["bars"]) == 2
+    assert payload["bars"][1]["close"] == 105.0
+
+
+def test_get_industry_sector_moneyflow(client: TestClient):
+    response = client.get(
+        "/api/sectors/industries/BK1027/moneyflow",
+        params={"name": "小金属"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["name"] == "小金属"
+    assert payload["source"] == "eastmoney"
+    assert payload["bars"][0]["main_net_inflow"] == 100000000.0
+    assert payload["bars"][1]["main_net_inflow"] == -50000000.0
 
 
 def test_sector_collector_validates_required_columns():

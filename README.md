@@ -46,7 +46,9 @@ VertTrade/
 
 ## Current Stage
 
-Stage 0 through Stage 8 are complete. Stage 9 (stability, data quality, and desktop packaging concept) is now implemented locally.
+Stage 0 through Stage 14 are complete. **Next: Stage 15 formal desktop installer.**
+
+Daily development should use the local web app (`scripts/start_local.py` or Vite dev server), not the Electron POC installer path.
 
 You can:
 
@@ -74,12 +76,15 @@ You can:
 22. Review Stage 9 stability and desktop packaging notes in `docs/stage9_stability_desktop_packaging.md`.
 23. Switch stock detail charts between daily K and 1 / 5 / 15 / 30 / 60 minute K.
 24. View a time-sharing chart with price line, average-price line, and intraday volume.
+25. Launch an Electron desktop shell proof of concept from `desktop/` (reference only).
 
-Next target:
+26. Switch stock-detail money-flow perspective (main / super-large / wide / retail).
+27. Use Stage 14 QA docs: regression checklist, data-source policy, known limitations.
+28. Manually refresh watchlist K-line/money-flow cache after market close via `scripts/refresh_watchlist_cache.py`.
 
-1. Prototype desktop shell startup around the local backend/frontend.
-2. Major index and market overview data for the Dashboard.
-3. Add richer intraday chart polish if needed.
+Next target (Stage 15 installer):
+
+1. **Stage 15**: Formal installer, Python sidecar, SQLite in app data.
 
 ## Local Setup
 
@@ -152,6 +157,8 @@ Realtime flow:
 Stability / desktop preparation:
 
 - See `docs/stage9_stability_desktop_packaging.md`.
+- Stage 14 QA: `docs/stage14_regression_checklist.md`, `docs/stage14_data_source_policy.md`, `docs/stage14_known_limitations.md`.
+- After market close, optionally run: `.venv/bin/python scripts/refresh_watchlist_cache.py`
 
 ## Verification
 

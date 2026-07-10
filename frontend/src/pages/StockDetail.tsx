@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   addWatchlistItem,
@@ -23,6 +23,14 @@ import { MoneyFlowPanel } from "../components/MoneyFlowPanel";
 import { PositionCard } from "../components/PositionCard";
 import { TimeShareChart } from "../components/TimeShareChart";
 import { buildQuoteFromKline } from "../utils/quote";
+import { buildPositionZoneLines, computePositionSeries } from "../utils/position";
+import {
+  getMoneyflowViewOption,
+  isMoneyflowViewAvailable,
+  readStoredMoneyflowView,
+  storeMoneyflowView,
+  type MoneyflowView,
+} from "../utils/moneyflow";
 
 type StockDetailProps = {
   stock: StockSummary;
@@ -65,14 +73,53 @@ function formatCacheAge(value: number | null | undefined): string {
   return `${Math.round(value)} 秒`;
 }
 
+function formatDataSource(source: string | null | undefined): string {
+  if (!source) {
+    return "--";
+  }
+
+  const labels: Record<string, string> = {
+    akshare_sina: "新浪（AKShare）",
+    eastmoney: "东方财富",
+    eastmoney_live: "东方财富",
+    tencent: "腾讯",
+    test_live: "测试数据源",
+  };
+
+  return labels[source] ?? source;
+}
+
+type ChartMetaProps = {
+  source?: string | null;
+  cacheTime?: string | null;
+  isStale?: boolean;
+  cacheAgeSeconds?: number | null;
+  note: string;
+};
+
+function ChartMeta({ source, cacheTime, isStale, cacheAgeSeconds, note }: ChartMetaProps) {
+  return (
+    <div className="chart-meta">
+      <p className="section-copy">{note}</p>
+      <div className="chart-meta-grid">
+        <span>数据来源：{formatDataSource(source)}</span>
+        <span>刷新时间：{formatDateTime(cacheTime)}</span>
+        <span>{isStale ? `缓存行情（${formatCacheAge(cacheAgeSeconds)}）` : "近实时缓存"}</span>
+      </div>
+    </div>
+  );
+}
+
 export function StockDetail({ stock, onBack }: StockDetailProps) {
   const didInitialKlineLoadRef = useRef(false);
   const [quote, setQuote] = useState<StockQuote | null>(null);
   const [kline, setKline] = useState<KlineResponse | null>(null);
   const [timeshare, setTimeshare] = useState<TimeShareResponse | null>(null);
   const [klinePeriod, setKlinePeriod] = useState("daily");
+  const [positionWindow, setPositionWindow] = useState(250);
   const [position, setPosition] = useState<StockPosition | null>(null);
   const [moneyflow, setMoneyflow] = useState<MoneyflowResponse | null>(null);
+  const [moneyflowView, setMoneyflowView] = useState<MoneyflowView>(readStoredMoneyflowView);
   const [loading, setLoading] = useState(true);
   const [klineLoading, setKlineLoading] = useState(false);
   const [positionLoading, setPositionLoading] = useState(false);
@@ -103,7 +150,7 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
 
       try {
         if (klinePeriod === "timeshare") {
-          const timeshareData = await getStockTimeshare(stock.code);
+          const timeshareData = await getStockTimeshare(stock.code, refresh);
           setTimeshare(timeshareData);
           if (timeshareData.points.length > 0) {
             const latest = timeshareData.points[timeshareData.points.length - 1];
@@ -117,7 +164,7 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
         const klineData =
           klinePeriod === "daily"
             ? await getStockKline(stock.code, refresh)
-            : await getStockIntradayKline(stock.code, klinePeriod);
+            : await getStockIntradayKline(stock.code, klinePeriod, refresh);
         const quoteData = buildQuoteFromKline(stock, klineData.bars);
 
         if (!quoteData) {
@@ -141,14 +188,14 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
       setPositionLoading(true);
 
       try {
-        setPosition(await getStockPosition(stock.code, 250, refresh));
+        setPosition(await getStockPosition(stock.code, positionWindow, refresh));
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "加载价格位置失败");
       } finally {
         setPositionLoading(false);
       }
     },
-    [stock.code],
+    [stock.code, positionWindow],
   );
 
   const loadMoneyflow = useCallback(
@@ -196,6 +243,58 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
   }, [loadKline]);
 
   useEffect(() => {
+    void loadPosition(false);
+  }, [loadPosition]);
+
+  useEffect(() => {
+    if (!moneyflow?.bars.length) {
+      return;
+    }
+    if (!isMoneyflowViewAvailable(moneyflow.bars, moneyflowView)) {
+      setMoneyflowView("main");
+      storeMoneyflowView("main");
+    }
+  }, [moneyflow, moneyflowView]);
+
+  const handleMoneyflowViewChange = useCallback((view: MoneyflowView) => {
+    setMoneyflowView(view);
+    storeMoneyflowView(view);
+  }, []);
+
+  const moneyflowViewOption = useMemo(
+    () => getMoneyflowViewOption(moneyflowView),
+    [moneyflowView],
+  );
+
+  useEffect(() => {
+    if (klinePeriod !== "timeshare") {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void loadKline(false);
+    }, 15000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [klinePeriod, loadKline]);
+
+  useEffect(() => {
+    if (klinePeriod === "daily" || klinePeriod === "timeshare") {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void loadKline(false);
+    }, 20000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [klinePeriod, loadKline]);
+
+  useEffect(() => {
     void loadWatchlistState();
   }, [loadWatchlistState]);
 
@@ -235,6 +334,20 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
       window.clearInterval(intervalId);
     };
   }, [stock.code]);
+
+  const positionSeries = useMemo(() => {
+    if (klinePeriod !== "daily" || !kline) {
+      return [];
+    }
+    return computePositionSeries(kline.bars, positionWindow);
+  }, [kline, klinePeriod, positionWindow]);
+
+  const positionZones = useMemo(() => {
+    if (klinePeriod !== "daily" || !position) {
+      return null;
+    }
+    return buildPositionZoneLines(position);
+  }, [klinePeriod, position]);
 
   const changeClass =
     quote?.change_percent !== null &&
@@ -342,6 +455,10 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
             </dd>
           </div>
           <div>
+            <dt>行情来源</dt>
+            <dd>{formatDataSource(quote.source)}</dd>
+          </div>
+          <div>
             <dt>行情时间</dt>
             <dd>{formatDateTime(quote.quote_time)}</dd>
           </div>
@@ -356,16 +473,18 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
         </section>
       ) : null}
 
-      <PositionCard position={position} loading={loading || positionLoading} />
+      <PositionCard
+        position={position}
+        loading={loading || positionLoading}
+        window={positionWindow}
+        onWindowChange={setPositionWindow}
+      />
 
       {klinePeriod === "timeshare" && timeshare && timeshare.points.length > 0 ? (
         <section className="chart-panel">
           <div className="section-header">
             <div>
               <h2>分时图</h2>
-              <p className="section-copy">
-                分时图展示盘中价格线、均价线和成交量，仅用于行情观察。
-              </p>
             </div>
             <div className="period-switcher">
               {KLINE_PERIODS.map((period) => (
@@ -380,6 +499,13 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
               ))}
             </div>
           </div>
+          <ChartMeta
+            source={timeshare.source}
+            cacheTime={timeshare.cache_time}
+            isStale={timeshare.is_stale}
+            cacheAgeSeconds={timeshare.cache_age_seconds}
+            note="分时图展示盘中价格线、均价线和成交量，仅用于行情观察；免费数据源可能有延迟，不是 tick 级或 Level-2 数据。"
+          />
           <TimeShareChart points={timeshare.points} />
         </section>
       ) : null}
@@ -389,11 +515,6 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
           <div className="section-header">
             <div>
               <h2>{klinePeriod === "daily" ? "日 K 线" : "分钟 K 线"}</h2>
-              <p className="section-copy">
-                {klinePeriod === "daily"
-                  ? "日 K 线下方显示成交量和主力资金流。"
-                  : "分钟 K 用于盘中观察，当前先显示价格和成交量。"}
-              </p>
             </div>
             <div className="period-switcher">
               {KLINE_PERIODS.map((period) => (
@@ -408,10 +529,32 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
               ))}
             </div>
           </div>
+          {klinePeriod === "daily" ? (
+            <p className="section-copy">
+              日 K 线下方显示成交量和{moneyflowViewOption.shortLabel}资金流（{moneyflowViewOption.label}）。
+            </p>
+          ) : (
+            <ChartMeta
+              source={kline.source}
+              cacheTime={kline.cache_time}
+              isStale={kline.is_stale}
+              cacheAgeSeconds={kline.cache_age_seconds}
+              note="分钟 K 用于盘中观察，仅显示价格和成交量；免费数据源可能有延迟，不是 tick 级或 Level-2 数据。"
+            />
+          )}
           <KLineChart
             bars={kline.bars}
             moneyflowBars={klinePeriod === "daily" ? moneyflow?.bars ?? [] : []}
+            moneyflowView={moneyflowView}
+            positionSeries={positionSeries}
+            positionZones={positionZones}
+            showPositionSeries={klinePeriod === "daily"}
           />
+          {klinePeriod === "daily" ? (
+            <p className="section-copy">
+              紫色副线为 {positionWindow} 日价格位置分数；绿色/红色虚线标注底部观察区与高位观察区边界。
+            </p>
+          ) : null}
         </section>
       ) : null}
 
@@ -419,6 +562,8 @@ export function StockDetail({ stock, onBack }: StockDetailProps) {
         moneyflow={moneyflow}
         loading={moneyflowLoading}
         error={moneyflowError}
+        view={moneyflowView}
+        onViewChange={handleMoneyflowViewChange}
       />
     </div>
   );

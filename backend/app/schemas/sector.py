@@ -1,4 +1,8 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field
+
+from .stock import KlineBar, MoneyflowBar
 
 
 class SectorSummary(BaseModel):
@@ -41,3 +45,24 @@ class SectorDetailResponse(BaseModel):
     name: str
     constituents: list[SectorConstituent] = Field(default_factory=list)
     source: str = "akshare_em"
+
+
+class SectorKlineResponse(BaseModel):
+    code: str
+    name: str
+    period: str = "daily"
+    bars: list[KlineBar] = Field(default_factory=list)
+    source: str = "akshare_ths"
+    cache_time: datetime | None = None
+    is_stale: bool = False
+    cache_age_seconds: float | None = None
+
+
+class SectorMoneyflowResponse(BaseModel):
+    code: str
+    name: str
+    source: str = "eastmoney"
+    bars: list[MoneyflowBar] = Field(default_factory=list)
+    cache_time: datetime | None = None
+    is_stale: bool = False
+    cache_age_seconds: float | None = None

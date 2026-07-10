@@ -39,5 +39,8 @@ def delete_watchlist_item(
 
 
 @router.get("/api/dashboard", response_model=DashboardResponse)
-def get_dashboard(service: WatchlistService = Depends(get_watchlist_service)):
-    return service.get_dashboard()
+def get_dashboard(
+    refresh: bool = False,
+    service: WatchlistService = Depends(get_watchlist_service),
+):
+    return service.get_dashboard(refresh=refresh)

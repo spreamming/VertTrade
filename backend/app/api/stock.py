@@ -45,17 +45,19 @@ def get_stock_kline(
 def get_stock_intraday_kline(
     code: str,
     period: str = Query(default="1m"),
+    refresh: bool = False,
     service: StockService = Depends(get_stock_service),
 ):
-    return service.get_intraday_kline(code, period=period)
+    return service.get_intraday_kline(code, period=period, refresh=refresh)
 
 
 @router.get("/{code}/timeshare", response_model=TimeShareResponse)
 def get_stock_timeshare(
     code: str,
+    refresh: bool = False,
     service: StockService = Depends(get_stock_service),
 ):
-    return service.get_timeshare(code)
+    return service.get_timeshare(code, refresh=refresh)
 
 
 @router.get("/{code}/quote", response_model=StockQuote)

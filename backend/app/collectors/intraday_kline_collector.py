@@ -20,7 +20,7 @@ def _market_symbol(code: str) -> str:
     return f"{prefix}{code}"
 
 
-def fetch_intraday_kline(code: str, period: str = "1m") -> pd.DataFrame:
+def fetch_intraday_kline(code: str, period: str = "1m") -> tuple[pd.DataFrame, str]:
     if period not in PERIOD_MAP:
         raise ValueError("分钟 K 周期仅支持 1m、5m、15m、30m、60m")
 
@@ -33,17 +33,17 @@ def fetch_intraday_kline(code: str, period: str = "1m") -> pd.DataFrame:
                 adjust="",
             )
     except (requests.RequestException, ValueError):
-        return _fetch_intraday_kline_eastmoney(code, ak_period)
+        return _fetch_intraday_kline_eastmoney(code, ak_period), "eastmoney"
 
     if frame.empty:
-        return _fetch_intraday_kline_eastmoney(code, ak_period)
+        return _fetch_intraday_kline_eastmoney(code, ak_period), "eastmoney"
 
     renamed = frame.rename(
         columns={
             "day": "trade_time",
         }
     )
-    return _normalize_intraday_frame(renamed)
+    return _normalize_intraday_frame(renamed), "akshare_sina"
 
 
 def _secid_for_code(code: str) -> str:

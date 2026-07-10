@@ -16,6 +16,8 @@ from backend.app.services.stock_service import StockService
 @pytest.fixture
 def client(monkeypatch):
     StockService._live_quote_cache.clear()
+    StockService._intraday_kline_cache.clear()
+    StockService._timeshare_cache.clear()
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -77,52 +79,58 @@ def client(monkeypatch):
     )
     monkeypatch.setattr(
         "backend.app.services.stock_service.fetch_intraday_kline",
-        lambda code, period="1m": pd.DataFrame(
-            [
-                {
-                    "trade_time": "2026-07-06 09:31:00",
-                    "open": 100.0,
-                    "high": 101.0,
-                    "low": 99.5,
-                    "close": 100.5,
-                    "pre_close": None,
-                    "volume": 100.0,
-                    "amount": 10000.0,
-                    "turnover_rate": None,
-                },
-                {
-                    "trade_time": "2026-07-06 09:32:00",
-                    "open": 100.5,
-                    "high": 102.0,
-                    "low": 100.0,
-                    "close": 101.5,
-                    "pre_close": 100.5,
-                    "volume": 120.0,
-                    "amount": 12000.0,
-                    "turnover_rate": None,
-                },
-            ]
+        lambda code, period="1m": (
+            pd.DataFrame(
+                [
+                    {
+                        "trade_time": "2026-07-06 09:31:00",
+                        "open": 100.0,
+                        "high": 101.0,
+                        "low": 99.5,
+                        "close": 100.5,
+                        "pre_close": None,
+                        "volume": 100.0,
+                        "amount": 10000.0,
+                        "turnover_rate": None,
+                    },
+                    {
+                        "trade_time": "2026-07-06 09:32:00",
+                        "open": 100.5,
+                        "high": 102.0,
+                        "low": 100.0,
+                        "close": 101.5,
+                        "pre_close": 100.5,
+                        "volume": 120.0,
+                        "amount": 12000.0,
+                        "turnover_rate": None,
+                    },
+                ]
+            ),
+            "akshare_sina",
         ),
     )
     monkeypatch.setattr(
         "backend.app.services.stock_service.fetch_timeshare",
-        lambda code: pd.DataFrame(
-            [
-                {
-                    "time": "2026-07-06 09:30:00",
-                    "price": 100.0,
-                    "average_price": 100.0,
-                    "volume": 100.0,
-                    "amount": 10000.0,
-                },
-                {
-                    "time": "2026-07-06 09:31:00",
-                    "price": 101.0,
-                    "average_price": 100.5,
-                    "volume": 120.0,
-                    "amount": 12120.0,
-                },
-            ]
+        lambda code: (
+            pd.DataFrame(
+                [
+                    {
+                        "time": "2026-07-06 09:30:00",
+                        "price": 100.0,
+                        "average_price": 100.0,
+                        "volume": 100.0,
+                        "amount": 10000.0,
+                    },
+                    {
+                        "time": "2026-07-06 09:31:00",
+                        "price": 101.0,
+                        "average_price": 100.5,
+                        "volume": 120.0,
+                        "amount": 12120.0,
+                    },
+                ]
+            ),
+            "tencent",
         ),
     )
     monkeypatch.setattr(
@@ -151,6 +159,8 @@ def client(monkeypatch):
         yield test_client
     app.dependency_overrides.clear()
     StockService._live_quote_cache.clear()
+    StockService._intraday_kline_cache.clear()
+    StockService._timeshare_cache.clear()
 
 
 def test_search_stocks(client: TestClient):
@@ -179,8 +189,10 @@ def test_get_stock_intraday_kline(client: TestClient):
     assert response.status_code == 200
     payload = response.json()
     assert payload["period"] == "1m"
+    assert payload["source"] == "akshare_sina"
     assert payload["bars"][0]["date"] == "2026-07-06 09:31:00"
     assert payload["bars"][1]["close"] == 101.5
+    assert payload["is_stale"] is False
 
 
 def test_get_stock_intraday_kline_rejects_unsupported_period(client: TestClient):
@@ -198,6 +210,141 @@ def test_get_stock_timeshare(client: TestClient):
     assert payload["source"] == "tencent"
     assert payload["points"][0]["time"] == "2026-07-06 09:30:00"
     assert payload["points"][1]["average_price"] == 100.5
+    assert payload["is_stale"] is False
+
+
+def test_get_stock_intraday_kline_uses_cache_within_ttl(
+    client: TestClient,
+    monkeypatch,
+):
+    calls = {"count": 0}
+
+    def counted_intraday(code: str, period: str = "1m"):
+        calls["count"] += 1
+        return (
+            pd.DataFrame(
+                [
+                    {
+                        "trade_time": "2026-07-06 09:31:00",
+                        "open": 100.0,
+                        "high": 101.0,
+                        "low": 99.5,
+                        "close": 100.0 + calls["count"],
+                        "pre_close": None,
+                        "volume": 100.0,
+                        "amount": 10000.0,
+                        "turnover_rate": None,
+                    }
+                ]
+            ),
+            "akshare_sina",
+        )
+
+    monkeypatch.setattr(
+        "backend.app.services.stock_service.fetch_intraday_kline",
+        counted_intraday,
+    )
+
+    first = client.get("/api/stocks/600519/kline/minute", params={"period": "1m"})
+    second = client.get("/api/stocks/600519/kline/minute", params={"period": "1m"})
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json()["bars"][0]["close"] == 101.0
+    assert second.json()["bars"][0]["close"] == 101.0
+    assert calls["count"] == 1
+
+
+def test_get_stock_intraday_kline_returns_stale_cache_when_provider_fails(
+    client: TestClient,
+    monkeypatch,
+):
+    calls = {"count": 0}
+
+    def flaky_intraday(code: str, period: str = "1m"):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            return (
+                pd.DataFrame(
+                    [
+                        {
+                            "trade_time": "2026-07-06 09:31:00",
+                            "open": 100.0,
+                            "high": 101.0,
+                            "low": 99.5,
+                            "close": 100.5,
+                            "pre_close": None,
+                            "volume": 100.0,
+                            "amount": 10000.0,
+                            "turnover_rate": None,
+                        }
+                    ]
+                ),
+                "akshare_sina",
+            )
+        raise ValueError("provider down")
+
+    monkeypatch.setattr(
+        "backend.app.services.stock_service.fetch_intraday_kline",
+        flaky_intraday,
+    )
+
+    first = client.get(
+        "/api/stocks/600519/kline/minute",
+        params={"period": "1m", "refresh": "true"},
+    )
+    second = client.get(
+        "/api/stocks/600519/kline/minute",
+        params={"period": "1m", "refresh": "true"},
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    payload = second.json()
+    assert payload["bars"][0]["close"] == 100.5
+    assert payload["is_stale"] is True
+    assert payload["cache_age_seconds"] >= 0
+
+
+def test_get_stock_timeshare_returns_stale_cache_when_provider_fails(
+    client: TestClient,
+    monkeypatch,
+):
+    calls = {"count": 0}
+
+    def flaky_timeshare(code: str):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            return (
+                pd.DataFrame(
+                    [
+                        {
+                            "time": "2026-07-06 09:30:00",
+                            "price": 100.0,
+                            "average_price": 100.0,
+                            "volume": 100.0,
+                            "amount": 10000.0,
+                        }
+                    ]
+                ),
+                "tencent",
+            )
+        raise ValueError("provider down")
+
+    monkeypatch.setattr(
+        "backend.app.services.stock_service.fetch_timeshare",
+        flaky_timeshare,
+    )
+
+    first = client.get("/api/stocks/600519/timeshare", params={"refresh": "true"})
+    second = client.get("/api/stocks/600519/timeshare", params={"refresh": "true"})
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    payload = second.json()
+    assert payload["points"][0]["price"] == 100.0
+    assert payload["is_stale"] is True
+    assert payload["cache_age_seconds"] >= 0
 
 
 def test_get_stock_quote(client: TestClient):

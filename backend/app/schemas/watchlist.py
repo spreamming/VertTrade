@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from .market import MarketBreadthSummary, MarketIndexSummary, MarketOverviewResponse
+
 
 class WatchlistCreate(BaseModel):
     code: str = Field(min_length=1, max_length=10)
@@ -36,5 +38,7 @@ class WatchlistItemResponse(BaseModel):
 class DashboardResponse(BaseModel):
     watchlist_count: int
     watchlist_summary: list[WatchlistItemResponse]
-    indices: list[dict] = Field(default_factory=list)
+    market_overview: MarketOverviewResponse
+    indices: list[MarketIndexSummary] = Field(default_factory=list)
+    market_breadth: MarketBreadthSummary | None = None
     market_notes: list[str] = Field(default_factory=list)

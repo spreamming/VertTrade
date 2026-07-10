@@ -20,6 +20,10 @@ export type KlineResponse = {
   name: string;
   period: string;
   bars: KlineBar[];
+  source?: string | null;
+  cache_time?: string | null;
+  is_stale?: boolean;
+  cache_age_seconds?: number | null;
 };
 
 export type TimeSharePoint = {
@@ -35,6 +39,9 @@ export type TimeShareResponse = {
   name: string;
   source: string;
   points: TimeSharePoint[];
+  cache_time?: string | null;
+  is_stale?: boolean;
+  cache_age_seconds?: number | null;
 };
 
 export type StockQuote = {
@@ -133,6 +140,27 @@ export type SectorDetailResponse = {
   source: string;
 };
 
+export type SectorKlineResponse = {
+  code: string;
+  name: string;
+  period: string;
+  bars: KlineBar[];
+  source: string;
+  cache_time?: string | null;
+  is_stale?: boolean;
+  cache_age_seconds?: number | null;
+};
+
+export type SectorMoneyflowResponse = {
+  code: string;
+  name: string;
+  source: string;
+  bars: MoneyflowBar[];
+  cache_time?: string | null;
+  is_stale?: boolean;
+  cache_age_seconds?: number | null;
+};
+
 export type RankingItem = {
   code?: string | null;
   name: string;
@@ -192,9 +220,47 @@ export type WatchlistItem = {
   created_at: string;
 };
 
+export type MarketIndexSummary = {
+  code: string;
+  name: string;
+  exchange: string;
+  latest_price: number;
+  change_amount?: number | null;
+  change_percent?: number | null;
+  volume?: number | null;
+  amount?: number | null;
+  quote_time?: string | null;
+  source: string;
+};
+
+export type MarketBreadthSummary = {
+  rising_count?: number | null;
+  falling_count?: number | null;
+  flat_count?: number | null;
+  limit_up_count?: number | null;
+  limit_down_count?: number | null;
+  suspended_count?: number | null;
+  activity_ratio?: number | null;
+  as_of?: string | null;
+  source: string;
+};
+
+export type MarketOverviewResponse = {
+  indices: MarketIndexSummary[];
+  breadth?: MarketBreadthSummary | null;
+  source?: string | null;
+  cache_time?: string | null;
+  is_stale?: boolean;
+  cache_age_seconds?: number | null;
+  notes: string[];
+  error?: string | null;
+};
+
 export type DashboardResponse = {
   watchlist_count: number;
   watchlist_summary: WatchlistItem[];
-  indices: Record<string, unknown>[];
+  market_overview: MarketOverviewResponse;
+  indices: MarketIndexSummary[];
+  market_breadth?: MarketBreadthSummary | null;
   market_notes: string[];
 };

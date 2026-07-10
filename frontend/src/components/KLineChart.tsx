@@ -4,6 +4,7 @@ import {
   createChart,
   CrosshairMode,
   HistogramSeries,
+  LineSeries,
   type CandlestickData,
   type HistogramData,
   type IChartApi,
@@ -13,10 +14,16 @@ import {
 import { useEffect, useRef } from "react";
 
 import type { KlineBar, MoneyflowBar } from "../types/stock";
+import { resolveMoneyflowNet, type MoneyflowView } from "../utils/moneyflow";
+import type { PositionPoint, PositionZoneLines } from "../utils/position";
 
 type KLineChartProps = {
   bars: KlineBar[];
   moneyflowBars?: MoneyflowBar[];
+  moneyflowView?: MoneyflowView;
+  positionSeries?: PositionPoint[];
+  positionZones?: PositionZoneLines | null;
+  showPositionSeries?: boolean;
 };
 
 function toChartTime(date: string): Time {
@@ -69,12 +76,21 @@ function formatChineseTickDate(time: Time): string {
   return formatChineseChartDate(time);
 }
 
-export function KLineChart({ bars, moneyflowBars = [] }: KLineChartProps) {
+export function KLineChart({
+  bars,
+  moneyflowBars = [],
+  moneyflowView = "main",
+  positionSeries = [],
+  positionZones = null,
+  showPositionSeries = false,
+}: KLineChartProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const volumeRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   const moneyflowRef = useRef<ISeriesApi<"Histogram"> | null>(null);
+  const positionRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const priceLineRefs = useRef<ReturnType<ISeriesApi<"Candlestick">["createPriceLine"]>[]>([]);
 
   useEffect(() => {
     if (!containerRef.current) {
@@ -137,22 +153,34 @@ export function KLineChart({ bars, moneyflowBars = [] }: KLineChartProps) {
       priceScaleId: "moneyflow",
     });
 
+    const positionSeriesApi = chart.addSeries(LineSeries, {
+      color: "#a78bfa",
+      lineWidth: 2,
+      priceScaleId: "position",
+      visible: false,
+    });
+
     chart.priceScale("right").applyOptions({
-      scaleMargins: { top: 0.05, bottom: 0.42 },
+      scaleMargins: { top: 0.05, bottom: showPositionSeries ? 0.5 : 0.42 },
     });
 
     chart.priceScale("volume").applyOptions({
-      scaleMargins: { top: 0.64, bottom: 0.2 },
+      scaleMargins: { top: showPositionSeries ? 0.72 : 0.64, bottom: showPositionSeries ? 0.28 : 0.2 },
     });
 
     chart.priceScale("moneyflow").applyOptions({
-      scaleMargins: { top: 0.82, bottom: 0 },
+      scaleMargins: { top: showPositionSeries ? 0.88 : 0.82, bottom: 0 },
+    });
+
+    chart.priceScale("position").applyOptions({
+      scaleMargins: { top: 0.52, bottom: 0.08 },
     });
 
     chartRef.current = chart;
     candleRef.current = candleSeries;
     volumeRef.current = volumeSeries;
     moneyflowRef.current = moneyflowSeries;
+    positionRef.current = positionSeriesApi;
 
     return () => {
       chart.remove();
@@ -160,18 +188,26 @@ export function KLineChart({ bars, moneyflowBars = [] }: KLineChartProps) {
       candleRef.current = null;
       volumeRef.current = null;
       moneyflowRef.current = null;
+      positionRef.current = null;
+      priceLineRefs.current = [];
     };
-  }, []);
+  }, [showPositionSeries]);
 
   useEffect(() => {
     if (
       !candleRef.current ||
       !volumeRef.current ||
       !moneyflowRef.current ||
+      !positionRef.current ||
       bars.length === 0
     ) {
       return;
     }
+
+    for (const line of priceLineRefs.current) {
+      candleRef.current.removePriceLine(line);
+    }
+    priceLineRefs.current = [];
 
     const candleData: CandlestickData<Time>[] = bars.map((bar) => ({
       time: toChartTime(bar.date),
@@ -192,12 +228,12 @@ export function KLineChart({ bars, moneyflowBars = [] }: KLineChartProps) {
     });
 
     const moneyflowByDate = new Map(
-      moneyflowBars.map((bar) => [bar.date, bar.main_net_inflow]),
+      moneyflowBars.map((bar) => [bar.date, resolveMoneyflowNet(bar, moneyflowView)]),
     );
     const moneyflowData: HistogramData<Time>[] = [];
     for (const bar of bars) {
       const value = moneyflowByDate.get(bar.date);
-      if (value !== undefined) {
+      if (value != null) {
         moneyflowData.push({
           time: toChartTime(bar.date),
           value,
@@ -212,8 +248,57 @@ export function KLineChart({ bars, moneyflowBars = [] }: KLineChartProps) {
     candleRef.current.setData(candleData);
     volumeRef.current.setData(volumeData);
     moneyflowRef.current.setData(moneyflowData);
+
+    if (showPositionSeries && positionSeries.length > 0) {
+      positionRef.current.applyOptions({ visible: true });
+      positionRef.current.setData(
+        positionSeries.map((point) => ({
+          time: toChartTime(point.date),
+          value: point.score,
+        })),
+      );
+    } else {
+      positionRef.current.applyOptions({ visible: false });
+      positionRef.current.setData([]);
+    }
+
+    if (positionZones) {
+      const zoneLines = [
+        {
+          price: positionZones.rollingLow,
+          color: "rgba(34, 197, 94, 0.85)",
+          title: "区间低",
+        },
+        {
+          price: positionZones.bottomZoneTop,
+          color: "rgba(34, 197, 94, 0.35)",
+          title: "底部观察区",
+        },
+        {
+          price: positionZones.topZoneBottom,
+          color: "rgba(239, 68, 68, 0.35)",
+          title: "高位观察区",
+        },
+        {
+          price: positionZones.rollingHigh,
+          color: "rgba(239, 68, 68, 0.85)",
+          title: "区间高",
+        },
+      ];
+      priceLineRefs.current = zoneLines.map((line) =>
+        candleRef.current!.createPriceLine({
+          price: line.price,
+          color: line.color,
+          lineWidth: 1,
+          lineStyle: 2,
+          axisLabelVisible: true,
+          title: line.title,
+        }),
+      );
+    }
+
     chartRef.current?.timeScale().fitContent();
-  }, [bars, moneyflowBars]);
+  }, [bars, moneyflowBars, moneyflowView, positionSeries, positionZones, showPositionSeries]);
 
   return <div ref={containerRef} className="kline-chart" />;
 }
